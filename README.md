@@ -29,7 +29,7 @@ It's super easy to get started. In your Python shell, do:
     # print the response of a withdrawal request
     print block_io.withdraw(pin='SECRET PIN', from_user_ids='1,2', to_user_id='0', amount='50.0')
 
-For more information, see https://block.io/api. This Python client provides a mapping for all methods listed on the Block.io API site.
+For more information, see [Python API Docs](https://block.io/api/python). This Python client provides a mapping for all methods listed on the Block.io API site.
 
 ## Contributing
 
