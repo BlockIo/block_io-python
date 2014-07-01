@@ -1,13 +1,12 @@
 import requests
-import json
 
-VERSION="0.1"
+VERSION="0.1.3"
 
 class BlockIo(object):
 
-    def __init__(self, options = {}):
+    def __init__(self, api_key):
         # initiate the object
-        self.api_key = options['api_key']
+        self.api_key = api_key
         self.base_url = 'https://block.io/api/v1/API_CALL/'
 
     def __getattr__(self, attr, *args, **kwargs):
