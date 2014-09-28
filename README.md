@@ -33,7 +33,7 @@ For more information, see [Python API Docs](https://block.io/api/simple/python).
 
 ## Contributing
 
-1. Fork it ( https://github.com/BlockIo/block_io/fork )
+1. Fork it ( https://github.com/BlockIo/block_io-python/fork )
 2. Create your feature branch (`git checkout -b my-new-feature`)
 3. Commit your changes (`git commit -am 'Add some feature'`)
 4. Push to the branch (`git push origin my-new-feature`)
