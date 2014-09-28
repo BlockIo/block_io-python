@@ -18,7 +18,7 @@ It's super easy to get started. In your Python shell, do:
 
     from block_io import BlockIo
 
-    block_io = BlockIo('API KEY')
+    block_io = BlockIo('API KEY', 'SECRET PIN', API_VERSION)
 
     # print the account balance
     print block_io.get_balance()
@@ -27,13 +27,13 @@ It's super easy to get started. In your Python shell, do:
     print block_io.get_my_addresses()
 
     # print the response of a withdrawal request
-    print block_io.withdraw(pin='SECRET PIN', from_user_ids='1,2', to_user_id='0', amount='50.0')
+    print block_io.withdraw(from_labels='default', to_label='destLabel', amount='50.0')
 
-For more information, see [Python API Docs](https://block.io/api/python). This Python client provides a mapping for all methods listed on the Block.io API site.
+For more information, see [Python API Docs](https://block.io/api/simple/python). This Python client provides a mapping for all methods listed on the Block.io API site.
 
 ## Contributing
 
-1. Fork it ( https://github.com/[my-github-username]/block_io/fork )
+1. Fork it ( https://github.com/BlockIo/block_io/fork )
 2. Create your feature branch (`git checkout -b my-new-feature`)
 3. Commit your changes (`git commit -am 'Add some feature'`)
 4. Push to the branch (`git push origin my-new-feature`)
