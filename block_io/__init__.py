@@ -95,6 +95,7 @@ class BlockIo(object):
         # initiate the object
         self.api_key = api_key
         self.pin = pin
+        self.version = version
         self.encryption_key = None
         self.base_url = 'https://dev.block.io:99/api/v'+str(version)+'/API_CALL/?api_key='+api_key
         self.withdraw_calls = ['withdraw', 'withdraw_from_address', 'withdraw_from_addresses', 'withdraw_from_label', 'withdraw_from_labels', 'withdraw_from_user_id', 'withdraw_from_users']
@@ -118,6 +119,8 @@ class BlockIo(object):
         if (self.version == 1):
             # we'll use the pin if we're using version 1
             kwargs['pin'] = self.pin
+
+        print kwargs
 
         response = self.api_call(method, **kwargs)
 
