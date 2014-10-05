@@ -3,7 +3,7 @@ from setuptools import setup
 setup(name='block_io',
       version='1.0.1',
       description='The easiest way to create a Dogecoin, Bitcoin, or Litecoin wallet. Sign up at Block.io for your API key.',
-      url='http://github.com/blockio/blockio-python',
+      url='https://github.com/BlockIo/block_io-python',
       author='Atif Nazir',
       author_email='a@block.io',
       license='MIT',
