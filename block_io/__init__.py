@@ -91,7 +91,7 @@ class BlockIo(object):
 
             return message
 
-    def __init__(self, api_key, pin, version = 1):
+    def __init__(self, api_key, pin, version = 2):
         # initiate the object
         self.api_key = api_key
         self.pin = pin
