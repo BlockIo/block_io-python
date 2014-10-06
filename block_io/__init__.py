@@ -120,8 +120,6 @@ class BlockIo(object):
             # we'll use the pin if we're using version 1
             kwargs['pin'] = self.pin
 
-        print kwargs
-
         response = self.api_call(method, **kwargs)
 
         if 'reference_id' in response['data'].keys():
