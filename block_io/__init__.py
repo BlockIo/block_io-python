@@ -11,7 +11,7 @@ from hashlib import sha256
 import json
 import requests
 
-VERSION="1.0.1"
+VERSION="1.0.2"
 
 class BlockIo(object):
 
