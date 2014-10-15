@@ -23,7 +23,7 @@ class TLSAdapter(HTTPAdapter):
                                        ssl_version=ssl.PROTOCOL_TLSv1)
 
 
-VERSION="1.0.4"
+VERSION="1.0.5"
 
 class BlockIo(object):
 
@@ -179,7 +179,7 @@ class BlockIo(object):
         s.mount('https://', TLSAdapter())
 
         # update the parameters with the API key
-        response = s.post(self.base_url.replace('API_CALL',method), params = payload)
+        response = s.post(self.base_url.replace('API_CALL',method), params = payload, timeout = 60)
 
         response = response.json()
 

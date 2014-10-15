@@ -2,7 +2,7 @@
 
 This Python package is the official reference client for the Block.io payments API. To use this, you will need the Dogecoin, Bitcoin, or Litecoin API key(s) from <a href="https://block.io" target="_blank">Block.io</a>. Go ahead, sign up :)
 
-### Latest version: 1.0.4. Now enforcing use of TLSv1 (instead of default SSLv3, which is vulnerable).
+### Latest version: 1.0.5. Now enforcing use of TLSv1 (instead of default SSLv3, which is vulnerable).
 
 ## Installation
 
