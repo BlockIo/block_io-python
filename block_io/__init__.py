@@ -11,7 +11,19 @@ from hashlib import sha256
 import json
 import requests
 
-VERSION="1.0.3"
+from requests.adapters import HTTPAdapter
+from urllib3.poolmanager import PoolManager
+import ssl
+
+class TLSAdapter(HTTPAdapter):
+    def init_poolmanager(self, connections, maxsize, block=False):
+        self.poolmanager = PoolManager(num_pools=connections,
+                                       maxsize=maxsize,
+                                       block=block,
+                                       ssl_version=ssl.PROTOCOL_TLSv1)
+
+
+VERSION="1.0.4"
 
 class BlockIo(object):
 
@@ -162,8 +174,12 @@ class BlockIo(object):
             
         payload.update(kwargs)
 
+        # create a session that will use the TLSv1 adapter
+        s = requests.Session()
+        s.mount('https://', TLSAdapter())
+
         # update the parameters with the API key
-        response = requests.post(self.base_url.replace('API_CALL',method), params = payload)
+        response = s.post(self.base_url.replace('API_CALL',method), params = payload)
 
         response = response.json()
 
