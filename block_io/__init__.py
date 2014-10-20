@@ -3,11 +3,12 @@ import base64
 from binascii import hexlify, unhexlify
 import json
 import requests
+import pkg_resources
 
 from . import vbuterin
 from . import pbkdf2
 
-VERSION="1.1.0"
+VERSION=pkg_resources.get_distribution("block-io").version
 
 class BlockIo(object):
 
