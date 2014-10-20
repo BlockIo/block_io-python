@@ -11,7 +11,6 @@ setup(name='block-io',
       install_requires=[
           'requests',
           'pycrypto',
-          'hashlib',
       ],
       zip_safe=False)
 
