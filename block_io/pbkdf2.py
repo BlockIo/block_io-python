@@ -19,15 +19,18 @@ def pbkdf2( password, keylen, salt = "", itercount = 1024, hashfn = sha256 ):
     except TypeError:
         digest_size = hashfn.digest_size
     # l - number of output blocks to produce
-    l = keylen / digest_size
+    l = keylen // digest_size
     if keylen % digest_size != 0:
         l += 1
 
+    if type(password) is not bytes:
+        password = password.encode('utf-8')
+    
     h = hmac.new( password, None, hashfn )
 
-    T = ""
+    T = b''
     for i in range(1, l+1):
-        T += pbkdf2_F( h, salt, itercount, i )
+        T += pbkdf2_F( h, salt.encode('utf-8'), itercount, i )
 
     return T[0: keylen]
 
@@ -35,9 +38,9 @@ def xorstr( a, b ):
     if len(a) != len(b):
         raise "xorstr(): lengths differ"
 
-    ret = ''
+    ret = b''
     for i in range(len(a)):
-        ret += chr(ord(a[i]) ^ ord(b[i]))
+        ret += bytes([a[i] ^ b[i]])
 
     return ret
 
