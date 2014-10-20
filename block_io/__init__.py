@@ -27,7 +27,7 @@ class BlockIo(object):
         def from_passphrase(passphrase):
             # use the sha256 of the given passphrase as the private key
 
-            private_key = vbuterin.sha256(unhexlify(passphrase))
+            private_key = vbuterin.bin_sha256(unhexlify(passphrase))
 
             return BlockIo.Key(private_key)
 
@@ -47,7 +47,7 @@ class BlockIo(object):
 
             decrypted = BlockIo.Helper.decrypt(encrypted_data, enc_key_hex)
 
-            return BlockIo.Key.from_passphrase(decrypted)
+            return BlockIo.Key.from_passphrase(decrypted.decode('utf-8'))
 
         @staticmethod
         def encrypt(data, key):
@@ -58,10 +58,10 @@ class BlockIo(object):
 
             BS = 16
             pad = lambda s: s + (BS - len(s) % BS) * chr(BS - len(s) % BS)
-            unpad = lambda s : s[0:-ord(s[-1])]
+            unpad = lambda s : s[0:-s[-1]]
 
             obj = AES.new(key, AES.MODE_ECB, "")
-            ciphertext = obj.encrypt(pad(message))
+            ciphertext = obj.encrypt(pad(data))
 
             return base64.b64encode(ciphertext)
 
@@ -77,7 +77,7 @@ class BlockIo(object):
 
                 BS = 16
                 pad = lambda s: s + (BS - len(s) % BS) * chr(BS - len(s) % BS)
-                unpad = lambda s : s[0:-ord(s[-1])]
+                unpad = lambda s : s[0:-s[-1]]
 
                 data = base64.b64decode(b64data) # decode from base64
                 obj = AES.new(key, AES.MODE_ECB, "")
