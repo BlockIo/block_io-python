@@ -1,17 +1,14 @@
-
 from Crypto.Cipher import AES
 import base64
-import sys
-import hmac
-import vbuterin
-import pbkdf2
 from binascii import hexlify, unhexlify
-from struct import pack
-from hashlib import sha256
 import json
 import requests
 
-VERSION="1.0.6"
+from . import vbuterin
+from . import pbkdf2
+
+VERSION = "1.0.6"
+
 
 class BlockIo(object):
 
@@ -29,9 +26,9 @@ class BlockIo(object):
         @staticmethod
         def from_passphrase(passphrase):
             # use the sha256 of the given passphrase as the private key
-            
+
             private_key = vbuterin.sha256(unhexlify(passphrase))
-            
+
             return BlockIo.Key(private_key)
 
     class Helper:
@@ -41,33 +38,33 @@ class BlockIo(object):
             # use pbkdf2 magic
             ret = pbkdf2.pbkdf2(pin, 16)
             ret = pbkdf2.pbkdf2(hexlify(ret), 32)
-            
+
             return hexlify(ret) # the encryption key
 
         @staticmethod
         def extractKey(encrypted_data, enc_key_hex):
             # encryption key is in hex
-            
+
             decrypted = BlockIo.Helper.decrypt(encrypted_data, enc_key_hex)
-            
+
             return BlockIo.Key.from_passphrase(decrypted)
 
         @staticmethod
         def encrypt(data, key):
             # key in hex, data as string
             # returns ciphertext in base64
-            
+
             key = unhexlify(key) # get bytes
-            
+
             BS = 16
-            pad = lambda s: s + (BS - len(s) % BS) * chr(BS - len(s) % BS) 
+            pad = lambda s: s + (BS - len(s) % BS) * chr(BS - len(s) % BS)
             unpad = lambda s : s[0:-ord(s[-1])]
-            
+
             obj = AES.new(key, AES.MODE_ECB, "")
             ciphertext = obj.encrypt(pad(message))
-            
+
             return base64.b64encode(ciphertext)
-            
+
         @staticmethod
         def decrypt(b64data, key):
             # key in hex, b64data as base64 string
@@ -77,11 +74,11 @@ class BlockIo(object):
 
             try:
                 key = unhexlify(key) # get bytes
-                
+
                 BS = 16
-                pad = lambda s: s + (BS - len(s) % BS) * chr(BS - len(s) % BS) 
+                pad = lambda s: s + (BS - len(s) % BS) * chr(BS - len(s) % BS)
                 unpad = lambda s : s[0:-ord(s[-1])]
-                
+
                 data = base64.b64decode(b64data) # decode from base64
                 obj = AES.new(key, AES.MODE_ECB, "")
                 message = unpad(obj.decrypt(data))
@@ -102,7 +99,7 @@ class BlockIo(object):
         self.withdraw_calls = ['withdraw', 'withdraw_from_address', 'withdraw_from_addresses', 'withdraw_from_label', 'withdraw_from_labels', 'withdraw_from_user_id', 'withdraw_from_users']
 
     def __getattr__(self, attr, *args, **kwargs):
-        
+
         def hook(*args, **kwargs):
             return self.api_call(attr, **kwargs)
 
@@ -138,7 +135,7 @@ class BlockIo(object):
                     # we have the required pubkey? sign it!
                     if (signer['signer_public_key'] == key.public_key):
                         signer['signed_data'] = key.sign(inputobj['data_to_sign'])
-            
+
             args = { 'signature_data': json.dumps(response['data']) }
 
             response = self.api_call('sign_and_finalize_withdrawal', **args)
@@ -154,13 +151,13 @@ class BlockIo(object):
 
     def api_call(self, method, **kwargs):
         # the actual API call
-        
+
         # http parameters
         payload = {}
 
         if self.api_key is not None:
             payload["api_key"] = self.api_key
-            
+
         payload.update(kwargs)
 
         # update the parameters with the API key
