@@ -6,13 +6,15 @@ This Python package is the official reference client for the Block.io payments A
 
 ## Installation
 
-Install the package using pip:
+[Using virtualenv is recommended when installing Python packages](https://packaging.python.org/en/latest/installing.html#virtual-environments).
 
-    $ sudo pip install block-io
+Install the package using `pip` for **Python 3**:
 
-Or install using easy_install:
+    pip install block-io
 
-    $ sudo easy_install block-io
+Install the package using `pip` for **Python 2** - backported hashlib is required:
+
+    pip install block-io hashlib==20081119
 
 ## Usage
 
@@ -24,7 +26,7 @@ It's super easy to get started. In your Python shell, do:
 
     # print the account balance
     print block_io.get_balance()
-    
+
     # print all addresses on this account
     print block_io.get_my_addresses()
 
