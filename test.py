@@ -17,7 +17,7 @@ MIN_BALANCE = 6;
 WITHDRAW_AMOUNT = 2;
 NETWORK_FEE = 1;
 
-gNewAddressLabel = pack('d', int(time.time())).encode('hex')
+gNewAddressLabel = hexlify(pack('d', int(time.time())))
 gWithdrawAddress = ""
 
 if (API_KEY is None) or (PIN is None):
@@ -99,7 +99,7 @@ witdrawTest = unittest.TestLoader().loadTestsFromTestCase(TestWithdrawInteractio
 sigTest = unittest.TestLoader().loadTestsFromTestCase(TestDeterministicSignatures)
 
 # run dat shiznit
-print "TESTING BLOCK-IO, api: v" + str(block_io.version) + "; client: v" + block_io.clientVersion
+print("TESTING BLOCK-IO, api: v{av}; client: v{cv}".format(av=block_io.version, cv=block_io.clientVersion))
 unittest.TextTestRunner(verbosity=2).run(sigTest)
 unittest.TextTestRunner(verbosity=2).run(basicTest)
 unittest.TextTestRunner(verbosity=2).run(witdrawTest)
