@@ -11,6 +11,7 @@ setup(name='block-io',
       install_requires=[
           'requests',
           'pycrypto',
+          'ecdsa'
       ],
       zip_safe=False)
 

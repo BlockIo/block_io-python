@@ -5,7 +5,8 @@ import json
 import requests
 import pkg_resources
 
-from . import vbuterin
+from ecdsa import SigningKey, SECP256k1, util
+from hashlib import sha256
 from . import pbkdf2
 
 VERSION=pkg_resources.get_distribution("block-io").version
@@ -15,20 +16,23 @@ class BlockIo(object):
     class Key:
 
         def __init__(self, privkey, pubkey = None):
-            self.private_key = privkey
-            self.public_key = vbuterin.compress(vbuterin.privkey_to_pubkey(privkey))
+            self.private_key = SigningKey.from_string(privkey, SECP256k1, sha256)
+            self.public_key = BlockIo.Helper.compress_pubkey(self.private_key.get_verifying_key().to_string())
 
         def sign(self, data_to_sign):
-            # returns the signed data using secp256k1
-            raw_sig = vbuterin.ecdsa_raw_sign(data_to_sign,self.private_key)
-            return vbuterin.der_encode_sig(*raw_sig)
+            der_sig = self.private_key.sign_digest_deterministic(data_to_sign, sha256, util.sigencode_der_canonize)
+            return der_sig
+
+        def sign_hex(self, hex_data):
+            return hexlify(self.sign(unhexlify(hex_data)))
+
+        def pubkey_hex(self):
+            return hexlify(self.public_key)
 
         @staticmethod
         def from_passphrase(passphrase):
             # use the sha256 of the given passphrase as the private key
-
-            private_key = vbuterin.bin_sha256(unhexlify(passphrase))
-
+            private_key = sha256(passphrase).digest()
             return BlockIo.Key(private_key)
 
     class Helper:
@@ -38,16 +42,13 @@ class BlockIo(object):
             # use pbkdf2 magic
             ret = pbkdf2.pbkdf2(pin, 16)
             ret = pbkdf2.pbkdf2(hexlify(ret), 32)
-
             return hexlify(ret) # the encryption key
 
         @staticmethod
         def extractKey(encrypted_data, enc_key_hex):
             # encryption key is in hex
-
             decrypted = BlockIo.Helper.decrypt(encrypted_data, enc_key_hex)
-
-            return BlockIo.Key.from_passphrase(decrypted.decode('utf-8'))
+            return BlockIo.Key.from_passphrase(unhexlify(decrypted))
 
         @staticmethod
         def encrypt(data, key):
@@ -68,7 +69,7 @@ class BlockIo(object):
         @staticmethod
         def decrypt(b64data, key):
             # key in hex, b64data as base64 string
-            # returns utf8 string
+            # returns utf-8 string
 
             message = None
 
@@ -87,6 +88,16 @@ class BlockIo(object):
                 raise Exception('Invalid Secret PIN provided.')
 
             return message
+
+        @staticmethod
+        def compress_pubkey(pubkey):
+            x = pubkey[:32]
+            y = pubkey[33:64]
+            y_int = 0;
+            for c in y:
+                if not isinstance(c, int): c = ord( c )
+                y_int = 256 * y_int + c
+            return bytes([2+(y_int % 2)]) + x
 
     def __init__(self, api_key, pin, version = 2):
         # initiate the object
@@ -133,8 +144,8 @@ class BlockIo(object):
             for inputobj in response['data']['inputs']:
                 for signer in inputobj['signers']:
                     # we have the required pubkey? sign it!
-                    if (signer['signer_public_key'] == key.public_key):
-                        signer['signed_data'] = key.sign(inputobj['data_to_sign'])
+                    if (signer['signer_public_key'] == key.pubkey_hex().decode('utf-8')):
+                        signer['signed_data'] = key.sign_hex(inputobj['data_to_sign']).decode('utf-8')
 
             args = { 'signature_data': json.dumps(response['data']) }
 
@@ -169,4 +180,3 @@ class BlockIo(object):
             raise Exception('Failed: '+response['data']['error_message'])
 
         return response
-
