@@ -6,6 +6,7 @@
 import base64
 import sys
 import hmac
+import six
 from binascii import hexlify, unhexlify
 from struct import pack
 from hashlib import sha256
@@ -34,7 +35,7 @@ def pbkdf2( password, keylen, salt = "", itercount = 1024, hashfn = sha256 ):
 
     return T[0: keylen]
 
-def xorstr( a, b ):
+def xorbytes( a, b ):
     if len(a) != len(b):
         raise "xorstr(): lengths differ"
 
@@ -42,6 +43,14 @@ def xorstr( a, b ):
     for i in range(len(a)):
         ret += bytes([a[i] ^ b[i]])
 
+    return ret
+
+def xorstr( a, b ):
+    if len(a) != len(b):
+        raise "xorstr(): lengths differ"
+    ret = ''
+    for i in range(len(a)):
+        ret += chr(ord(a[i]) ^ ord(b[i]))
     return ret
 
 def prf( h, data ):
@@ -55,9 +64,11 @@ def pbkdf2_F( h, salt, itercount, blocknum ):
     U = prf( h, salt + pack('>i',blocknum ) )
     T = U
 
+    xor_func = xorstr if six.PY2 else xorbytes
+
     for i in range(2, itercount+1):
         U = prf( h, U )
-        T = xorstr( T, U )
+        T = xor_func( T, U )
 
     return T
 

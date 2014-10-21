@@ -4,6 +4,8 @@ import os
 import unittest
 import time
 
+import six
+
 from struct import pack
 from types import *
 from binascii import hexlify, unhexlify
@@ -44,7 +46,7 @@ class TestBasicInteractions(BlockIoAPITest):
         self.result_assertions(result)
 
         self.assertEqual(result["data"]["label"], gNewAddressLabel.decode('utf-8'))
-        self.assertIsInstance(result["data"]["address"], str);
+        self.assertIsInstance(result["data"]["address"], six.text_type);
 
     def test_get_my_addresses(self):
         global gWithdrawAddress
@@ -57,8 +59,8 @@ class TestBasicInteractions(BlockIoAPITest):
 
         for address in addresses:
             self.assertIsInstance(address, dict)
-            self.assertIsInstance(address["address"], str)
-            self.assertIsInstance(address["available_balance"], str)
+            self.assertIsInstance(address["address"], six.text_type)
+            self.assertIsInstance(address["available_balance"], six.text_type)
             valueInAddress = int(float(address["available_balance"]))
             if valueInAddress >= MIN_BALANCE:
                 gWithdrawAddress = address["address"]
@@ -84,7 +86,7 @@ class TestWithdrawInteractions(BlockIoAPITest):
         self.assertEqual(int(float(result["data"]["amount_sent"])), WITHDRAW_AMOUNT)
         self.assertEqual(int(float(result["data"]["amount_withdrawn"])), WITHDRAW_AMOUNT + NETWORK_FEE)
 
-        self.assertIsInstance(result["data"]["txid"], str)
+        self.assertIsInstance(result["data"]["txid"], six.text_type)
 
 class TestDeterministicSignatures(unittest.TestCase):
 
