@@ -177,9 +177,11 @@ class BlockIo(object):
         payload.update(kwargs)
 
         # update the parameters with the API key
-        response = requests.post(self.base_url.replace('API_CALL',method), params = payload)
-
+        session = requests.session()
+        response = session.post(self.base_url.replace('API_CALL',method), data = payload)        
         response = response.json()
+
+        session.close() # we're done with it, let's close it
 
         if ('error_message' in response['data'].keys()):
             raise Exception('Failed: '+response['data']['error_message'])
