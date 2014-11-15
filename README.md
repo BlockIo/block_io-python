@@ -46,7 +46,7 @@ The issue here is the missing MinGW32 compiler in Windows. You can install it [f
 
 After that, add the following to the PATH environment variable in your Control Panel -> System -> Advanced Settings:  
 
-C:\MinGW\bin\;C:\MinGW\mingw32\bin\;C:\MinGW\msys\1.0\bin\;C:\MinGW\msys\1.0\sbin\;  
+    C:\MinGW\bin\;C:\MinGW\mingw32\bin\;C:\MinGW\msys\1.0\bin\;C:\MinGW\msys\1.0\sbin\;  
 
 Once this is done, go to C:\Python3.4\Lib\distutils, and create a file calls "distutils.cfg" with the following content:  
 
