@@ -50,9 +50,9 @@ C:\MinGW\bin\;C:\MinGW\mingw32\bin\;C:\MinGW\msys\1.0\bin\;C:\MinGW\msys\1.0\sbi
 
 Once this is done, go to C:\Python3.4\Lib\distutils, and create a file calls "distutils.cfg" with the following content:  
 
-   [build]  
+    [build]  
 
-   compiler=mingw32  
+    compiler=mingw32  
 
 
 Now exit your Command Prompt or Python IDE, go to Command Prompt again, type "pip install block-io==1.1.1". 
