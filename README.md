@@ -42,7 +42,7 @@ You can install it like so on Windows: "pip install block-io==1.1.1"
 
 Now regarding the vcvarsall.bat error -- that error is due to the fact that pycrypto library is being compiled when you're trying to install the block-io library.  
 
-The issue here is the missing MinGW32 compiler in Windows. You can install it from here: http://sourceforge.net/projects/mingw/files/. Get the installer, install all the packages the install shows for MinGW32.  
+The issue here is the missing MinGW32 compiler in Windows. You can install it [from here](http://sourceforge.net/projects/mingw/files/). Get the installer, install all the packages the install shows for MinGW32.  
 
 After that, add the following to the PATH environment variable in your Control Panel -> System -> Advanced Settings:  
 
