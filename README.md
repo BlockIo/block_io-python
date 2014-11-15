@@ -51,6 +51,7 @@ C:\MinGW\bin\;C:\MinGW\mingw32\bin\;C:\MinGW\msys\1.0\bin\;C:\MinGW\msys\1.0\sbi
 Once this is done, go to C:\Python3.4\Lib\distutils, and create a file calls "distutils.cfg" with the following content:  
 
    [build]  
+
    compiler=mingw32  
 
 
