@@ -11,7 +11,7 @@ from block_io import BlockIo
 import six
 
 # must use private key of the address we're trying to sweep from
-private_key = 'PRIVATE KEY IN HEX FORM' # this key never goes to Block.io, it stays here with you
+private_key = 'PRIVATE KEY IN WALLET IMPORT FORMAT FORM' # this key never goes to Block.io, it stays here with you
 
 from_address = 'SWEEP COINS FROM THIS ADDRESS' # the address to sweep from
 to_address = 'SWEEP COINS INTO THIS ADDRESS' # the address to send coins to
