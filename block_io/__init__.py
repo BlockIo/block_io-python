@@ -133,7 +133,7 @@ class BlockIo(object):
         self.version = version
         self.clientVersion = VERSION
         self.encryption_key = None
-        self.base_url = 'https://dev.block.io:99/api/v'+str(version)+'/API_CALL/?api_key='+api_key
+        self.base_url = 'https://block.io/api/v'+str(version)+'/API_CALL/?api_key='+api_key
         self.withdraw_calls = ['withdraw', 'withdraw_from_address', 'withdraw_from_addresses', 'withdraw_from_label', 'withdraw_from_labels', 'withdraw_from_user_id', 'withdraw_from_users']
         self.sweep_calls = ['sweep_from_address']
 
