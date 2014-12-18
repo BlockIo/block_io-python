@@ -1,5 +1,6 @@
 from Crypto.Cipher import AES
 import base64
+import base58
 from binascii import hexlify, unhexlify
 import json
 import requests
@@ -35,6 +36,27 @@ class BlockIo(object):
         def from_passphrase(passphrase):
             # use the sha256 of the given passphrase as the private key
             private_key = sha256(passphrase).digest()
+            return BlockIo.Key(private_key)
+
+        @staticmethod
+        def from_wif(privkey):
+            # extract the secret exponent from the given coin-formatted private key
+            private_key = ""
+
+            try:
+                extended_key_bytes = base58.b58decode_check(privkey)
+            except ValueError as e:
+                # Invalid checksum!
+                raise Exception("Invalid Private Key provided. Must be in Wallet Import Format.")
+
+            # Drop the network bytes    
+            extended_key_bytes = extended_key_bytes[1:]
+
+            private_key = extended_key_bytes
+
+            if (len(private_key) == 33):
+                private_key = extended_key_bytes[:-1]
+
             return BlockIo.Key(private_key)
 
     class Helper:
@@ -111,8 +133,9 @@ class BlockIo(object):
         self.version = version
         self.clientVersion = VERSION
         self.encryption_key = None
-        self.base_url = 'https://block.io/api/v'+str(version)+'/API_CALL/?api_key='+api_key
+        self.base_url = 'https://dev.block.io:99/api/v'+str(version)+'/API_CALL/?api_key='+api_key
         self.withdraw_calls = ['withdraw', 'withdraw_from_address', 'withdraw_from_addresses', 'withdraw_from_label', 'withdraw_from_labels', 'withdraw_from_user_id', 'withdraw_from_users']
+        self.sweep_calls = ['sweep_from_address']
 
     def __getattr__(self, attr, *args, **kwargs):
 
@@ -122,10 +145,54 @@ class BlockIo(object):
         def withdraw_hook(*args, **kwargs):
             return self.withdraw_meta(attr, **kwargs)
 
+        def sweep_hook(*args, **kwargs):
+            return self.sweep_meta(attr, **kwargs)
+
         if any(attr in s for s in self.withdraw_calls):
             return withdraw_hook
+        elif any(attr in s for s in self.sweep_calls):
+            return sweep_hook
         else:
             return hook
+
+
+    def sweep_meta(self, method, **kwargs):
+        # sweep call meta
+
+        if (self.version == 1):
+            # only available for API v2 users
+            raise Exception("Current version (API V1) does not support the Sweep functionality.")
+            
+        key = self.Key.from_wif(kwargs['private_key'])
+        
+        del kwargs['private_key'] # remove the key, we're not going to pass it on
+        kwargs['public_key'] = key.pubkey_hex()
+        
+        response = self.api_call(method, **kwargs)
+
+        if 'reference_id' in response['data'].keys():
+            # we need to sign some stuff, let's get to it
+
+            # sign all the data we can
+
+            for inputobj in response['data']['inputs']:
+                for signer in inputobj['signers']:
+                    # we have the required pubkey? sign it!
+                    if (signer['signer_public_key'] == key.pubkey_hex().decode('utf-8')):
+                        signer['signed_data'] = key.sign_hex(inputobj['data_to_sign']).decode('utf-8')
+
+            args = { 'signature_data': json.dumps(response['data']) }
+
+            response = self.api_call('sign_and_finalize_sweep', **args)
+
+            if ('network_fee' not in response['data'].keys()):
+                # we didn't get the transaction ID as proof of sweep, something went wrong
+                raise Exception('Sweep failed:', response['data']['error_message'])
+
+            return response
+        else:
+            # sweep processed
+            return response
 
     def withdraw_meta(self, method, **kwargs):
         # withdraw call meta
