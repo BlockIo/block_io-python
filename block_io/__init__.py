@@ -18,9 +18,15 @@ class BlockIo(object):
 
     class Key:
 
-        def __init__(self, privkey, pubkey = None):
+        def __init__(self, privkey, pubkey = None, compressed = True):
             self.private_key = SigningKey.from_string(privkey, SECP256k1, sha256)
-            self.public_key = BlockIo.Helper.compress_pubkey(self.private_key.get_verifying_key().to_string())
+
+            if (compressed):
+                # use the compressed public key
+                self.public_key = BlockIo.Helper.compress_pubkey(self.private_key.get_verifying_key().to_string())
+            else:
+                # use the uncompressed public key
+                self.public_key = unhexlify('04' + hexlify(self.private_key.get_verifying_key().to_string()))
 
         def sign(self, data_to_sign):
             der_sig = self.private_key.sign_digest_deterministic(data_to_sign, sha256, util.sigencode_der_canonize)
@@ -49,6 +55,9 @@ class BlockIo(object):
                 # Invalid checksum!
                 raise Exception("Invalid Private Key provided. Must be in Wallet Import Format.")
 
+            # is this a compressed WIF or not?
+            is_compressed = len(hexlify(extended_key_bytes)) == 68 and hexlify(extended_key_bytes)[-2:] == "01"
+
             # Drop the network bytes    
             extended_key_bytes = extended_key_bytes[1:]
 
@@ -57,7 +66,7 @@ class BlockIo(object):
             if (len(private_key) == 33):
                 private_key = extended_key_bytes[:-1]
 
-            return BlockIo.Key(private_key)
+            return BlockIo.Key(private_key, None, is_compressed)
 
     class Helper:
 
