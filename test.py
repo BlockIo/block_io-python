@@ -11,6 +11,9 @@ from types import *
 from binascii import hexlify, unhexlify
 from ecdsa import rfc6979, SECP256k1, util
 from hashlib import sha256
+from decimal import Decimal, getcontext
+
+getcontext().prec = 8
 
 API_KEY = os.environ.get("BLOCK_IO_API_KEY")
 PIN = os.environ.get("BLOCK_IO_PIN")
@@ -61,7 +64,7 @@ class TestBasicInteractions(BlockIoAPITest):
             self.assertIsInstance(address, dict)
             self.assertIsInstance(address["address"], six.text_type)
             self.assertIsInstance(address["available_balance"], six.text_type)
-            valueInAddress = int(float(address["available_balance"]))
+            valueInAddress = Decimal(address["available_balance"])
             if valueInAddress >= MIN_BALANCE:
                 gWithdrawAddress = address["address"]
 
@@ -81,10 +84,10 @@ class TestWithdrawInteractions(BlockIoAPITest):
         result = self.client.withdraw_from_address(from_address=gWithdrawAddress, to_label=gNewAddressLabel, amount=WITHDRAW_AMOUNT)
         self.result_assertions(result)
 
-        self.assertEqual(int(float(result["data"]["network_fee"])), NETWORK_FEE)
-        self.assertEqual(int(float(result["data"]["blockio_fee"])), 0)
-        self.assertEqual(int(float(result["data"]["amount_sent"])), WITHDRAW_AMOUNT)
-        self.assertEqual(int(float(result["data"]["amount_withdrawn"])), WITHDRAW_AMOUNT + NETWORK_FEE)
+        self.assertEqual(Decimal(result["data"]["network_fee"]), NETWORK_FEE)
+        self.assertEqual(Decimal(result["data"]["blockio_fee"]), 0)
+        self.assertEqual(Decimal(result["data"]["amount_sent"]), WITHDRAW_AMOUNT)
+        self.assertEqual(Decimal(result["data"]["amount_withdrawn"]), WITHDRAW_AMOUNT + NETWORK_FEE)
 
         self.assertIsInstance(result["data"]["txid"], six.text_type)
 
