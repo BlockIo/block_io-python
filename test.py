@@ -98,7 +98,7 @@ class TestDeterministicSignatures(unittest.TestCase):
         self.hex_data = "feedfacedeadbeeffeedfacedeadbeeffeedfacedeadbeeffeedfacedeadbeef"
 
     def test_deterministic_k(self):
-        k = rfc6979.generate_k(SECP256k1.generator, self.key.private_key.privkey.secret_multiplier, sha256, unhexlify(self.hex_data))
+        k = rfc6979.generate_k(SECP256k1.generator.order(), self.key.private_key.privkey.secret_multiplier, sha256, unhexlify(self.hex_data))
         self.assertEqual(hexlify(util.number_to_string(k, self.key.private_key.privkey.order)), b'ab56733dc6b9cf8fbecd9af7ba64ee5b658b8a1def2f4c4c510a2996d2761d6f')
 
     def test_signature(self):
