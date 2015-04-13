@@ -14,6 +14,11 @@ import six
 
 VERSION=pkg_resources.get_distribution("block-io").version
 
+
+class BlockIoAPIError(Exception):
+    """Thrown when block.io API call fails."""
+
+
 class BlockIo(object):
 
     class Key:
@@ -58,7 +63,7 @@ class BlockIo(object):
             # is this a compressed WIF or not?
             is_compressed = len(hexlify(extended_key_bytes)) == 68 and hexlify(extended_key_bytes)[-2:] == "01"
 
-            # Drop the network bytes    
+            # Drop the network bytes
             extended_key_bytes = extended_key_bytes[1:]
 
             private_key = extended_key_bytes
@@ -111,7 +116,7 @@ class BlockIo(object):
 
                 BS = 16
                 if (six.PY2):
-                    pad = lambda s: s + (BS - len(s) % BS) * chr(BS - len(s) % BS) 
+                    pad = lambda s: s + (BS - len(s) % BS) * chr(BS - len(s) % BS)
                     unpad = lambda s : s[0:-ord(s[-1])]
                 else:
                     pad = lambda s: s + (BS - len(s) % BS) * chr(BS - len(s) % BS)
@@ -171,12 +176,12 @@ class BlockIo(object):
         if (self.version == 1):
             # only available for API v2 users
             raise Exception("Current version (API V1) does not support the Sweep functionality.")
-            
+
         key = self.Key.from_wif(kwargs['private_key'])
-        
+
         del kwargs['private_key'] # remove the key, we're not going to pass it on
         kwargs['public_key'] = key.pubkey_hex()
-        
+
         response = self.api_call(method, **kwargs)
 
         if 'reference_id' in response['data'].keys():
@@ -254,12 +259,18 @@ class BlockIo(object):
 
         # update the parameters with the API key
         session = requests.session()
-        response = session.post(self.base_url.replace('API_CALL',method), data = payload)        
+        response = session.post(self.base_url.replace('API_CALL',method), data = payload)
         response = response.json()
 
         session.close() # we're done with it, let's close it
 
-        if ('error_message' in response['data'].keys()):
-            raise Exception('Failed: '+response['data']['error_message'])
+        if response["status"] != "success":
+            if hasattr(response["data"], "keys"):
+                # The response payload might be list-like in the case error_message key cannot be inside
+                # the data section, e.g. get_notifications()
+                if ('error_message' in response['data'].keys()):
+                    raise BlockIoAPIError('Failed: '+response['data']['error_message'])
+            else:
+                raise BlockIoAPIError("Failed, error_message was not provided, method %s" % method)
 
         return response
