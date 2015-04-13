@@ -9,10 +9,10 @@ setup(name='block-io',
       license='MIT',
       packages=['block_io'],
       install_requires=[
-          'requests==2.4.3',
-          'pycrypto==2.6.1',
-          'ecdsa==0.11',
-          'six>=1.8.0',
+          'requests',
+          'pycrypto',
+          'ecdsa',
+          'six',
           'base58'
       ],
       zip_safe=False)

@@ -1,0 +1,6 @@
+block_io
+requests==2.4.3
+pycrypto==2.6.1
+ecdsa==0.11
+six>=1.8.0
+
