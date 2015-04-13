@@ -14,13 +14,13 @@ import six
 
 VERSION=pkg_resources.get_distribution("block-io").version
 
-class UnknownError(Exception):
+class BlockIoUnknownError(Exception):
     """Thrown when response status codes are outside of 200-299, 419-420, 500-599."""
 
-class APIThrottleError(Exception):
+class BlockIoAPIThrottleError(Exception):
     """Thrown when API call gets throttled at Block.io."""
 
-class APICallFailed(Exception):
+class BlockIoAPIInternalError(Exception):
     """Thrown on 500-599 errors."""
 
 class BlockIoAPIError(Exception):
@@ -268,24 +268,32 @@ class BlockIo(object):
         # update the parameters with the API key
         session = requests.session()
         response = session.post(self.base_url.replace('API_CALL',method), data = payload)
-        response = response.json()
+        status_code = response.status_code
+        
+        try:
+            response = response.json() # convert response to JSON
+        except:
+            response = {}
 
         session.close() # we're done with it, let's close it
 
-        if 200 <= response.status_code <= 299:
-            if response["status"] != "success":
-                if hasattr(response["data"], "keys"):
-                    # The response payload might be list-like in the case error_message key cannot be inside
-                    # the data section, e.g. get_notifications()
-                    if ('error_message' in response['data'].keys()):
-                        raise BlockIoAPIError('Failed: '+response['data']['error_message'])
+        if ('status' in response.keys()) and (response['status'] == 'fail'):
+
+            if 'data' in response.keys() and 'error_message' in response['data'].keys():
+                # call failed, and error_message was provided
+                raise BlockIoAPIError('Failed: '+response['data']['error_message'])
             else:
+                # call failed, and error_message was NOT provided
                 raise BlockIoAPIError("Failed, error_message was not provided, method %s" % method)
-        elif 500 <= response.status_code <= 599:
-            raise APICallError("API call to Block.io failed, method %s" % method)
-        elif 419 <= response.status_code <= 420:
-            raise APIThrottleError("API call got throttled by rate limits at Block.io, method %s" % method)
-        else:
-            raise UnknownError("Unknown error occurred when querying Block.io, method %s", % method)
+
+        elif 500 <= status_code <= 599:
+            # using the status_code since a JSON response was not provided
+            raise BlockIoAPIInternalError("API call to Block.io failed externally, method %s" % method)
+        elif 419 <= status_code <= 420:
+            # using the status_code since a JSON response was not provided
+            raise BlockIoAPIThrottleError("API call got throttled by rate limits at Block.io, method %s" % method)
+        elif not (200 <= status_code <= 299):
+            # using the status_code since a JSON response was not provided
+            raise BlockIoUnknownError("Unknown error occurred when querying Block.io, method %s" % method)
 
         return response
