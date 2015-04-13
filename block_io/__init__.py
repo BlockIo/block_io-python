@@ -14,6 +14,9 @@ import six
 
 VERSION=pkg_resources.get_distribution("block-io").version
 
+class BlockIoInvalidResponseError(Exception):
+    """Thrown when we receive an unexpected/unparseable response from Block.io"""
+
 class BlockIoUnknownError(Exception):
     """Thrown when response status codes are outside of 200-299, 419-420, 500-599."""
 
@@ -277,7 +280,10 @@ class BlockIo(object):
 
         session.close() # we're done with it, let's close it
 
-        if ('status' in response.keys()) and (response['status'] == 'fail'):
+        if not ('status' in response.keys()):
+            # unexpected response
+            raise BlockIoInvalidResponseError("Failed, invalid response received from Block.io, method %s" % method)
+        elif ('status' in response.keys()) and (response['status'] == 'fail'):
 
             if 'data' in response.keys() and 'error_message' in response['data'].keys():
                 # call failed, and error_message was provided
