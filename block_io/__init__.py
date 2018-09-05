@@ -110,7 +110,7 @@ class BlockIo(object):
             pad = lambda s: s + (BS - len(s) % BS) * chr(BS - len(s) % BS)
             unpad = lambda s : s[0:-s[-1]]
 
-            obj = AES.new(key, AES.MODE_ECB, "")
+            obj = AES.new(key, AES.MODE_ECB)
             ciphertext = obj.encrypt(pad(data))
 
             return base64.b64encode(ciphertext)
@@ -134,7 +134,7 @@ class BlockIo(object):
                     unpad = lambda s : s[0:-s[-1]]
 
                 data = base64.b64decode(b64data) # decode from base64
-                obj = AES.new(key, AES.MODE_ECB, "")
+                obj = AES.new(key, AES.MODE_ECB)
                 message = unpad(obj.decrypt(data))
             except:
                 # error decrypting? must be an invalid secret pin
