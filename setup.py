@@ -10,7 +10,7 @@ setup(name='block-io',
       packages=['block_io'],
       install_requires=[
           'requests',
-          'pycrypto',
+          'pycryptodome',
           'ecdsa',
           'six',
           'base58'
