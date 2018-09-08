@@ -111,7 +111,7 @@ class BlockIo(object):
             unpad = lambda s : s[0:-s[-1]]
 
             obj = AES.new(key, AES.MODE_ECB)
-            ciphertext = obj.encrypt(pad(data))
+            ciphertext = obj.encrypt(pad(data).encode('latin-1'))
 
             return base64.b64encode(ciphertext)
 
