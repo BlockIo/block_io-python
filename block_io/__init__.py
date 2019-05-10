@@ -222,9 +222,8 @@ class BlockIo(object):
     def withdraw_meta(self, method, **kwargs):
         # withdraw call meta
 
-        if (self.version == 1):
-            # we'll use the pin if we're using version 1
-            kwargs['pin'] = self.pin
+        # no inadvertent passing of pin
+        kwargs.pop('pin', None)
 
         response = self.api_call(method, **kwargs)
 
