@@ -11,7 +11,7 @@ setup(name='block-io',
       install_requires=[
           'requests>=2.20.0',
           'pycryptodome>=3.6.6,<4.0',
-          'ecdsa==0.13',
+          'ecdsa==0.13.3',
           'six>=1.8.0',
           'base58>=1.0.0'
       ],
