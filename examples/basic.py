@@ -2,6 +2,7 @@
 
 from block_io import BlockIo
 from decimal import *
+import os
 import six # for python2 back-compatibility in printing messages using print as a function
 import random
 import sys
@@ -9,7 +10,7 @@ import sys
 version = 2 # API version
 
 # use a testnet api key here, say, dogecoin
-block_io = BlockIo('TESTNET API KEY', 'SECRET PIN', version)
+block_io = BlockIo(os.environ.get('BLOCK_IO_API_KEY'), os.environ.get('BLOCK_IO_PIN'), version)
 getcontext().prec = 8 # coins are 8 decimal places at most
 
 # create a new address with a random label

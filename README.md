@@ -34,7 +34,7 @@ For more information, see [Python API Docs](https://block.io/api/simple/python).
 
 ## Windows Users, Please Note:
 
-You can install it like so on Windows: "pip install block-io==1.1.10"  
+You can install it like so on Windows: "pip install block-io==1.1.11"  
 
 Now regarding the vcvarsall.bat error -- that error is due to the fact that pycrypto library is being compiled when you're trying to install the block-io library.  
 

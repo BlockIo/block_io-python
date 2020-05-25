@@ -10,29 +10,30 @@ import json
 import six # for python2 back-compatibility in printing messages using print as a function
 import random
 import sys
+import os
 
 version = 2 # API version
 
 # use a testnet api key here, say, dogecoin
-block_io = BlockIo('Your API Key', 'Your Secret PIN', version)
+block_io = BlockIo(os.environ.get('BLOCK_IO_API_KEY'), os.environ.get('BLOCK_IO_PIN'), version)
 getcontext().prec = 8 # coins are 8 decimal places at most
 
 # create a new address with a random label
 address_label = 'dtrust'+str(int(random.random()*10000))
 
 # create the key objects for each private key
-keys = [ BlockIo.Key.from_passphrase('alpha1alpha2alpha3alpha4'), BlockIo.Key.from_passphrase('alpha2alpha3alpha4alpha1'), BlockIo.Key.from_passphrase('alpha3alpha4alpha1alpha2'), BlockIo.Key.from_passphrase('alpha4alpha1alpha2alpha3') ]
+keys = [ BlockIo.Key.from_passphrase('alpha1alpha2alpha3alpha4'.encode('utf-8')), BlockIo.Key.from_passphrase('alpha2alpha3alpha4alpha1'.encode('utf-8')), BlockIo.Key.from_passphrase('alpha3alpha4alpha1alpha2'.encode('utf-8')), BlockIo.Key.from_passphrase('alpha4alpha1alpha2alpha3'.encode('utf-8')) ]
 
 pubkeys = []
 
 for key in keys:
-    pubkeys.insert(len(pubkeys), key.pubkey_hex())
+    pubkeys.insert(len(pubkeys), key.pubkey_hex().decode("utf-8"))
     six.print_(key.pubkey_hex())
 
 # create a dTrust address that requires 4 out of 5 keys (4 of ours, 1 at Block.io).
 # Block.io automatically adds +1 to specified required signatures because of its own key
 
-print "* Creating a new 4 of 5 MultiSig address for DOGETEST"
+six.print_("* Creating a new 4 of 5 MultiSig address for DOGETEST")
 six.print_(','.join(str(x) for x in pubkeys))
 response = block_io.get_new_dtrust_address(label=address_label,public_keys=','.join(str(x) for x in pubkeys),required_signatures=3) 
 
@@ -89,6 +90,8 @@ six.print_(">> Withdrawal Reference ID:", response['data']['reference_id'])
 # sign the withdrawal request, one signature at a time
 
 for key in keys:
+
+    pub_hex = key.pubkey_hex().decode("utf-8")
     
     for input in response['data']['inputs']:
         
@@ -97,15 +100,15 @@ for key in keys:
         # find the object to put our signature in
         for signer in input['signers']:
             
-            if signer['signer_public_key'] == key.pubkey_hex():
+            if signer['signer_public_key'] == pub_hex:
                 # found it, let's add the signature to this object
-                signer['signed_data'] = key.sign_hex(data_to_sign)
+                signer['signed_data'] = key.sign_hex(data_to_sign).decode("utf-8")
 
-                six.print_("* Data Signed By:", key.pubkey_hex())
+                six.print_("* Data Signed By:", pub_hex)
 
     # let's have Block.io record this signature we just created
     block_io.sign_transaction(signature_data=json.dumps(response['data']))
-    six.print_(">> Signatures relayed to Block.io for Public Key=", key.pubkey_hex())
+    six.print_(">> Signatures relayed to Block.io for Public Key=", pub_hex)
 
 # finalize the transaction now that's it been signed by all our keys
 six.print_("* Finalizing transaction")

@@ -42,7 +42,7 @@ class BlockIo(object):
                 self.public_key = BlockIo.Helper.compress_pubkey(self.private_key.get_verifying_key().to_string())
             else:
                 # use the uncompressed public key
-                self.public_key = unhexlify('04' + hexlify(self.private_key.get_verifying_key().to_string()))
+                self.public_key = unhexlify('04' + hexlify(self.private_key.get_verifying_key().to_string()).decode("utf-8"))
 
         def sign(self, data_to_sign):
             der_sig = self.private_key.sign_digest_deterministic(data_to_sign, sha256, util.sigencode_der_canonize)
@@ -72,8 +72,8 @@ class BlockIo(object):
                 raise Exception("Invalid Private Key provided. Must be in Wallet Import Format.")
 
             # is this a compressed WIF or not?
-            is_compressed = len(hexlify(extended_key_bytes)) == 68 and hexlify(extended_key_bytes)[-2:] == "01"
-
+            is_compressed = len(hexlify(extended_key_bytes)) == 68 and hexlify(extended_key_bytes)[-2:].decode("utf-8") == "01"
+            
             # Drop the network bytes
             extended_key_bytes = extended_key_bytes[1:]
 
@@ -191,7 +191,7 @@ class BlockIo(object):
         key = self.Key.from_wif(kwargs['private_key'])
 
         del kwargs['private_key'] # remove the key, we're not going to pass it on
-        kwargs['public_key'] = key.pubkey_hex()
+        kwargs['public_key'] = key.pubkey_hex().decode("utf-8")
 
         response = self.api_call(method, **kwargs)
 
