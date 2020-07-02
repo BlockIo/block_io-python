@@ -97,13 +97,37 @@ class TestDeterministicSignatures(unittest.TestCase):
         self.key = BlockIo.Key(unhexlify("6b0e34587dece0ef042c4c7205ce6b3d4a64d0bc484735b9325f7971a0ead963"))
         self.hex_data = "feedfacedeadbeeffeedfacedeadbeeffeedfacedeadbeeffeedfacedeadbeef"
 
-    def test_deterministic_k(self):
+    def test_deterministic_k_no_extra_entropy(self):
         k = rfc6979.generate_k(SECP256k1.generator.order(), self.key.private_key.privkey.secret_multiplier, sha256, unhexlify(self.hex_data))
         self.assertEqual(hexlify(util.number_to_string(k, self.key.private_key.privkey.order)), b'ab56733dc6b9cf8fbecd9af7ba64ee5b658b8a1def2f4c4c510a2996d2761d6f')
 
-    def test_signature(self):
-        sig = self.key.sign_hex(self.hex_data)
+    def test_deterministic_k_extra_entropy_1(self):
+        extra_entropy = bytearray.fromhex(hex(1).split("x")[1].rjust(64,"0"))[::-1]
+        k = rfc6979.generate_k(SECP256k1.generator.order(), self.key.private_key.privkey.secret_multiplier, sha256, unhexlify(self.hex_data), 0, extra_entropy)
+        self.assertEqual(hexlify(util.number_to_string(k, self.key.private_key.privkey.order)), b'f24f24e2e6510071c86da612ef04ccc21664a3801e0e06a227023b9c513a8290')
+
+    def test_deterministic_k_extra_entropy_16(self):
+        extra_entropy = bytearray.fromhex(hex(16).split("x")[1].rjust(64,"0"))[::-1]
+        k = rfc6979.generate_k(SECP256k1.generator.order(), self.key.private_key.privkey.secret_multiplier, sha256, unhexlify(self.hex_data), 0, extra_entropy)
+        self.assertEqual(hexlify(util.number_to_string(k, self.key.private_key.privkey.order)), b'f42eeee9d30ec008d58ce23b2ff08fac85127e87390bccccbecc68a537da3d47')
+
+    def test_deterministic_k_extra_entropy_255(self):
+        extra_entropy = bytearray.fromhex(hex(255).split("x")[1].rjust(64,"0"))[::-1]
+        k = rfc6979.generate_k(SECP256k1.generator.order(), self.key.private_key.privkey.secret_multiplier, sha256, unhexlify(self.hex_data), 0, extra_entropy)
+        self.assertEqual(hexlify(util.number_to_string(k, self.key.private_key.privkey.order)), b'a2c913d48ca5d18c62126a90059a552f4cafeab85b55e9acdc6848473910f150')
+
+    def test_deterministic_k_extra_entropy_256(self):
+        extra_entropy = bytearray.fromhex(hex(256).split("x")[1].rjust(64,"0"))[::-1]
+        k = rfc6979.generate_k(SECP256k1.generator.order(), self.key.private_key.privkey.secret_multiplier, sha256, unhexlify(self.hex_data), 0, extra_entropy)
+        self.assertEqual(hexlify(util.number_to_string(k, self.key.private_key.privkey.order)), b'39c9dc355f042b24fe44184119c31b62ff9d8a3d0c5a26bada674d9595e6988d')
+
+    def test_signature_without_low_r(self):
+        sig = self.key.sign_hex(self.hex_data,False)
         self.assertEqual(sig, b'3045022100b633aaa7cd5b7af455211531f193b61d34d20fe5ea19d23dd40d6074126150530220676617cd427db7d85923ebe4426ccecc47fb5826e3e24b60e62244e2a4811086')
+
+    def test_signature_with_low_r(self):
+        sig = self.key.sign_hex(self.hex_data)
+        self.assertEqual(sig, b'3044022042b9b4d673c85798f226c85f55ea6e114a0805bd5a0efba35f14c05235bb67b2022016333edae230c0ab607e948b48ceaefb5cab07300fb869d9da0a1b0f6bb53f65')
 
 class TestHelpers(unittest.TestCase):
     def setUp(self):

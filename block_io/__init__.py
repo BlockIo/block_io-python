@@ -44,12 +44,22 @@ class BlockIo(object):
                 # use the uncompressed public key
                 self.public_key = unhexlify('04' + hexlify(self.private_key.get_verifying_key().to_string()).decode("utf-8"))
 
-        def sign(self, data_to_sign):
-            der_sig = self.private_key.sign_digest_deterministic(data_to_sign, sha256, util.sigencode_der_canonize)
-            return der_sig
+        def sign(self, data_to_sign, use_low_r = True):
+            counter = 0
 
-        def sign_hex(self, hex_data):
-            return hexlify(self.sign(unhexlify(hex_data)))
+            while True:
+                extra_entropy = b""
+                if (counter > 0):
+                    extra_entropy = bytearray.fromhex(hex(counter).split("x")[1].rjust(64,"0"))[::-1]
+                der_sig = hexlify(self.private_key.sign_digest_deterministic(data_to_sign, sha256, util.sigencode_der_canonize, extra_entropy))
+                if use_low_r == False or (int(der_sig[6:8],16) == 32 and int(der_sig[8:10],16) < 128): #  der_sig[3] == 32 and der_sig[4] < 128):
+                    break
+                counter = counter + 1
+                    
+            return unhexlify(der_sig)
+
+        def sign_hex(self, hex_data, use_low_r = True):
+            return hexlify(self.sign(unhexlify(hex_data), use_low_r))
 
         def pubkey_hex(self):
             return hexlify(self.public_key)
