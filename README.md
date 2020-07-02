@@ -2,9 +2,6 @@
 
 This Python package is the official reference client for the Block.io payments API. To use this, you will need the Dogecoin, Bitcoin, or Litecoin API key(s) from <a href="https://block.io" target="_blank">Block.io</a>. Go ahead, sign up :)
 
-#### ATTENTION: Package name has changed from block_io to block-io for PyPi.
-#### COMPATIBILITY: Please use Python2.7+. Also compatible with Python 3.0+.
-
 ## Installation
 
 [Using virtualenv is recommended when installing Python packages](https://packaging.python.org/en/latest/installing.html#virtual-environments).
