@@ -171,6 +171,7 @@ class BlockIo(object):
         self.base_url = 'https://block.io/api/v'+str(version)+'/API_CALL/?api_key='+api_key
         self.withdraw_calls = ['withdraw', 'withdraw_from_address', 'withdraw_from_addresses', 'withdraw_from_label', 'withdraw_from_labels', 'withdraw_from_user_id', 'withdraw_from_users']
         self.sweep_calls = ['sweep_from_address']
+        self.request_headers = {'Accept': 'application/json', 'User-Agent': 'python:block_io:'+self.clientVersion}
 
     def __getattr__(self, attr, *args, **kwargs):
 
@@ -279,7 +280,7 @@ class BlockIo(object):
 
         # update the parameters with the API key
         session = requests.session()
-        response = session.post(self.base_url.replace('API_CALL',method), data = payload)
+        response = session.post(self.base_url.replace('API_CALL',method), data = payload, headers = self.request_headers)
         status_code = response.status_code
         
         try:

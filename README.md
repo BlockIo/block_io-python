@@ -3,13 +3,13 @@
 This Python package is the official reference client for the Block.io payments API. To use this, you will need the Dogecoin, Bitcoin, or Litecoin API key(s) from <a href="https://block.io" target="_blank">Block.io</a>. Go ahead, sign up :)
 
 #### ATTENTION: Package name has changed from block_io to block-io for PyPi.
-#### COMPATIBILITY: Please use Python2.7+. Also compatible with Python 3.0+.
+#### COMPATIBILITY: Please use Python3.0+. Also compatible with Python 2.7.
 
 ## Installation
 
 [Using virtualenv is recommended when installing Python packages](https://packaging.python.org/en/latest/installing.html#virtual-environments).
 
-Install the package using `pip` for **Python 2.7+**:
+Install the package using `pip`:
 
     pip install block-io
 
@@ -34,7 +34,7 @@ For more information, see [Python API Docs](https://block.io/api/simple/python).
 
 ## Windows Users, Please Note:
 
-You can install it like so on Windows: "pip install block-io==1.1.13"  
+You can install it like so on Windows: "pip install block-io==1.1.15"  
 
 Now regarding the vcvarsall.bat error -- that error is due to the fact that pycrypto library is being compiled when you're trying to install the block-io library.  
 
@@ -51,7 +51,7 @@ Once this is done, go to C:\Python3.4\Lib\distutils, and create a file calls "di
     compiler=mingw32  
 
 
-Now exit your Command Prompt or Python IDE, go to Command Prompt again, type "pip install block-io==1.1.13". 
+Now exit your Command Prompt or Python IDE, go to Command Prompt again, type "pip install block-io==1.1.15". 
 
 
 ## Contributing
