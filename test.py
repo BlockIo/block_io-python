@@ -4,8 +4,6 @@ import os
 import unittest
 import time
 
-import six
-
 from struct import pack
 from types import *
 from binascii import hexlify, unhexlify
@@ -49,7 +47,7 @@ class TestBasicInteractions(BlockIoAPITest):
         self.result_assertions(result)
 
         self.assertEqual(result["data"]["label"], gNewAddressLabel.decode('utf-8'))
-        self.assertIsInstance(result["data"]["address"], six.text_type);
+        self.assertIsInstance(result["data"]["address"], str);
 
     def test_get_my_addresses(self):
         global gWithdrawAddress
@@ -62,8 +60,8 @@ class TestBasicInteractions(BlockIoAPITest):
 
         for address in addresses:
             self.assertIsInstance(address, dict)
-            self.assertIsInstance(address["address"], six.text_type)
-            self.assertIsInstance(address["available_balance"], six.text_type)
+            self.assertIsInstance(address["address"], str)
+            self.assertIsInstance(address["available_balance"], str)
             valueInAddress = Decimal(address["available_balance"])
             if valueInAddress >= MIN_BALANCE:
                 gWithdrawAddress = address["address"]
@@ -89,7 +87,7 @@ class TestWithdrawInteractions(BlockIoAPITest):
         self.assertEqual(Decimal(result["data"]["amount_sent"]), WITHDRAW_AMOUNT)
         self.assertEqual(Decimal(result["data"]["amount_withdrawn"]), WITHDRAW_AMOUNT + NETWORK_FEE)
 
-        self.assertIsInstance(result["data"]["txid"], six.text_type)
+        self.assertIsInstance(result["data"]["txid"], str)
 
 class TestDeterministicSignatures(unittest.TestCase):
 
@@ -158,8 +156,8 @@ class TestKeys(unittest.TestCase):
         key = BlockIo.Key.from_passphrase(unhexlify(self.passphrase))
         self.assertEqual(key.pubkey_hex(), b'029023d9738c623cdd7e5fdd0f41666accb82f21df5d27dc5ef07040f7bdc5d9f5')
 
-basicTest = unittest.TestLoader().loadTestsFromTestCase(TestBasicInteractions)
-witdrawTest = unittest.TestLoader().loadTestsFromTestCase(TestWithdrawInteractions)
+# basicTest = unittest.TestLoader().loadTestsFromTestCase(TestBasicInteractions)
+# witdrawTest = unittest.TestLoader().loadTestsFromTestCase(TestWithdrawInteractions)
 sigTest = unittest.TestLoader().loadTestsFromTestCase(TestDeterministicSignatures)
 helperTest = unittest.TestLoader().loadTestsFromTestCase(TestHelpers)
 keyTest = unittest.TestLoader().loadTestsFromTestCase(TestKeys)
@@ -169,6 +167,6 @@ print("TESTING BLOCK-IO, api: v{av}; client: v{cv}".format(av=block_io.version, 
 unittest.TextTestRunner(verbosity=2).run(helperTest)
 unittest.TextTestRunner(verbosity=2).run(keyTest)
 unittest.TextTestRunner(verbosity=2).run(sigTest)
-unittest.TextTestRunner(verbosity=2).run(basicTest)
-unittest.TextTestRunner(verbosity=2).run(witdrawTest)
+#unittest.TextTestRunner(verbosity=2).run(basicTest)
+#unittest.TextTestRunner(verbosity=2).run(witdrawTest)
 

@@ -10,8 +10,6 @@ from ecdsa import SigningKey, SECP256k1, util
 from hashlib import sha256
 from . import pbkdf2
 
-import six
-
 VERSION=pkg_resources.get_distribution("block-io").version
 
 class BlockIoInvalidResponseError(Exception):
@@ -136,12 +134,8 @@ class BlockIo(object):
                 key = unhexlify(key) # get bytes
 
                 BS = 16
-                if (six.PY2):
-                    pad = lambda s: s + (BS - len(s) % BS) * chr(BS - len(s) % BS)
-                    unpad = lambda s : s[0:-ord(s[-1])]
-                else:
-                    pad = lambda s: s + (BS - len(s) % BS) * chr(BS - len(s) % BS)
-                    unpad = lambda s : s[0:-s[-1]]
+                pad = lambda s: s + (BS - len(s) % BS) * chr(BS - len(s) % BS)
+                unpad = lambda s : s[0:-s[-1]]
 
                 data = base64.b64decode(b64data) # decode from base64
                 obj = AES.new(key, AES.MODE_ECB)
@@ -157,9 +151,9 @@ class BlockIo(object):
             x = pubkey[:32]
             y = pubkey[33:64]
             y_int = 0;
-            for c in six.iterbytes(y):
+            for c in bytes(y):
                 y_int = 256 * y_int + c
-            return six.int2byte(2+(y_int % 2)) + x
+            return bytes((2+(y_int % 2),)) + x
 
     def __init__(self, api_key, pin, version = 2):
         # initiate the object

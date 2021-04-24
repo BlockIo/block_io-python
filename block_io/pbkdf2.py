@@ -6,7 +6,6 @@
 import base64
 import sys
 import hmac
-import six
 from binascii import hexlify, unhexlify
 from struct import pack
 from hashlib import sha256
@@ -64,7 +63,7 @@ def pbkdf2_F( h, salt, itercount, blocknum ):
     U = prf( h, salt + pack('>i',blocknum ) )
     T = U
 
-    xor_func = xorstr if six.PY2 else xorbytes
+    xor_func = xorbytes
 
     for i in range(2, itercount+1):
         U = prf( h, U )
