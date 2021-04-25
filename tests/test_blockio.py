@@ -13,82 +13,6 @@ from decimal import Decimal, getcontext
 
 getcontext().prec = 8
 
-API_KEY = os.environ.get("BLOCK_IO_API_KEY")
-PIN = os.environ.get("BLOCK_IO_PIN")
-API_VERSION = os.getenv("BLOCK_IO_VERSION", 2)
-
-# Hardcoded dogetest for now
-MIN_BALANCE = 6;
-WITHDRAW_AMOUNT = 2;
-NETWORK_FEE = 1;
-
-gNewAddressLabel = hexlify(pack('d', int(time.time())))
-gWithdrawAddress = ""
-
-if (API_KEY is None) or (PIN is None):
-    raise Exception("NEED env: BLOCK_IO_API_KEY && BLOCK_IO_PIN")
-
-block_io = BlockIo(API_KEY, PIN, API_VERSION)
-
-class BlockIoAPITest(unittest.TestCase):
-    def setUp(self):
-        self.client = block_io
-
-    def result_assertions(self, result):
-        self.assertIsInstance(result, dict)
-        self.assertIsInstance(result["data"], dict)
-        self.assertEqual(result["status"], "success")
-        self.assertNotIn("error", result)
-
-class TestBasicInteractions(BlockIoAPITest):
-
-    def test_get_new_address(self):
-        result = self.client.get_new_address(label=gNewAddressLabel)
-        self.result_assertions(result)
-
-        self.assertEqual(result["data"]["label"], gNewAddressLabel.decode('utf-8'))
-        self.assertIsInstance(result["data"]["address"], str);
-
-    def test_get_my_addresses(self):
-        global gWithdrawAddress
-
-        result = self.client.get_my_addresses()
-        self.result_assertions(result)
-
-        self.assertIsInstance(result["data"]["addresses"], list)
-        addresses = result["data"]["addresses"]
-
-        for address in addresses:
-            self.assertIsInstance(address, dict)
-            self.assertIsInstance(address["address"], str)
-            self.assertIsInstance(address["available_balance"], str)
-            valueInAddress = Decimal(address["available_balance"])
-            if valueInAddress >= MIN_BALANCE:
-                gWithdrawAddress = address["address"]
-
-        if gWithdrawAddress == "":
-            raise Exception("Not enough balance to continue")
-
-    def result_assertions(self, result):
-        self.assertIsInstance(result, dict)
-        self.assertIsInstance(result["data"], dict)
-        self.assertEqual(result["status"], "success")
-        self.assertNotIn("error", result)
-
-class TestWithdrawInteractions(BlockIoAPITest):
-
-    def test_withdraw_from_address(self):
-        self.assertNotEqual(gWithdrawAddress, "")
-        result = self.client.withdraw_from_address(from_address=gWithdrawAddress, to_label=gNewAddressLabel, amount=WITHDRAW_AMOUNT)
-        self.result_assertions(result)
-
-        self.assertEqual(Decimal(result["data"]["network_fee"]), NETWORK_FEE)
-        self.assertEqual(Decimal(result["data"]["blockio_fee"]), 0)
-        self.assertEqual(Decimal(result["data"]["amount_sent"]), WITHDRAW_AMOUNT)
-        self.assertEqual(Decimal(result["data"]["amount_withdrawn"]), WITHDRAW_AMOUNT + NETWORK_FEE)
-
-        self.assertIsInstance(result["data"]["txid"], str)
-
 class TestDeterministicSignatures(unittest.TestCase):
 
     def setUp(self):
@@ -155,18 +79,4 @@ class TestKeys(unittest.TestCase):
     def test_from_passphrase(self):
         key = BlockIo.Key.from_passphrase(unhexlify(self.passphrase))
         self.assertEqual(key.pubkey_hex(), b'029023d9738c623cdd7e5fdd0f41666accb82f21df5d27dc5ef07040f7bdc5d9f5')
-
-# basicTest = unittest.TestLoader().loadTestsFromTestCase(TestBasicInteractions)
-# witdrawTest = unittest.TestLoader().loadTestsFromTestCase(TestWithdrawInteractions)
-sigTest = unittest.TestLoader().loadTestsFromTestCase(TestDeterministicSignatures)
-helperTest = unittest.TestLoader().loadTestsFromTestCase(TestHelpers)
-keyTest = unittest.TestLoader().loadTestsFromTestCase(TestKeys)
-
-# run dat shiznit
-print("TESTING BLOCK-IO, api: v{av}; client: v{cv}".format(av=block_io.version, cv=block_io.clientVersion))
-unittest.TextTestRunner(verbosity=2).run(helperTest)
-unittest.TextTestRunner(verbosity=2).run(keyTest)
-unittest.TextTestRunner(verbosity=2).run(sigTest)
-#unittest.TextTestRunner(verbosity=2).run(basicTest)
-#unittest.TextTestRunner(verbosity=2).run(witdrawTest)
 
