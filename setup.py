@@ -11,7 +11,7 @@ setup(name='block-io',
       author_email='a@block.io',
       license='MIT',
       packages=['block_io'],
-      python_requires='>=3.0, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*, <4',
+      python_requires='>=3.5, <4',
       long_description=long_description,
       long_description_content_type="text/markdown",
       install_requires=[
