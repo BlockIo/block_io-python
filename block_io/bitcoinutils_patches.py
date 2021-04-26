@@ -137,3 +137,102 @@ def signature_with_sighash(signature, sighash = bitcoinutils.constants.SIGHASH_A
     # takes signature as a hex
     return hexlify(unhexlify(signature) + struct.pack('B', sighash))
 ####
+
+def debug_txin_stream(self):
+    """Converts to bytes"""
+    
+    # Internally Bitcoin uses little-endian byte order as it improves
+    # speed. Hashes are defined and implemented as big-endian thus
+    # those are transmitted in big-endian order. However, when hashes are
+    # displayed Bitcoin uses little-endian order because it is sometimes
+    # convenient to consider hashes as little-endian integers (and not
+    # strings)
+    # - note that we reverse the byte order for the tx hash since the string
+    #   was displayed in little-endian!
+    # - note that python's struct uses little-endian by default
+    txid_bytes = unhexlify(self.txid)[::-1]
+    txout_bytes = struct.pack('<L', self.txout_index)
+    script_sig_bytes = self.script_sig.to_bytes()
+#        struct.pack('B', len(script_sig_bytes)) + \
+    data = txid_bytes + txout_bytes + self.encode_var_int(len(script_sig_bytes)) + script_sig_bytes + self.sequence # modified to use varints
+    return data
+
+bitcoinutils.transactions.TxInput.stream = debug_txin_stream
+
+from bitcoinutils.utils import prepend_compact_size
+from bitcoinutils.script import OP_CODES
+
+def debug_to_bytes(self, segwit = False):
+    #Converts the script to bytes
+    #    If an OP code the appropriate byte is included according to:
+    #    https://en.bitcoin.it/wiki/Script
+    #    If not consider it data (signature, public key, public key hash, etc.) and
+    #    and include with appropriate OP_PUSHDATA OP code plus length
+    #    """
+    script_bytes = b''
+    for token in self.script:
+        # add op codes directly
+        if token in OP_CODES:
+            script_bytes += OP_CODES[token]
+            # if integer between 0 and 16 add the appropriate op code
+        elif type(token) is int and token >= 0 and token <= 16:
+            script_bytes += OP_CODES['OP_' + str(token)]
+            # it is data, so add accordingly
+        else:
+            if type(token) is int:
+                script_bytes += self._push_integer(token)
+            else:
+                if segwit:
+                    # probably add TxInputWitness which will know how to serialize
+                    script_bytes += self._segwit_op_push_data(token)
+                else:
+                    script_bytes += self._op_push_data(token)
+                    
+    return script_bytes
+
+bitcoinutils.script.Script.to_bytes = debug_to_bytes
+
+def debug_op_push_data(self, data):
+
+    data_bytes = unhexlify(data)
+
+    if len(data_bytes) < 0x4c:
+        print("<0x4c")
+        return struct.pack('B', len(data_bytes)) + data_bytes # modified
+#        return chr(len(data_bytes)).encode() + data_bytes
+    elif len(data_bytes) < 0xff:
+        print("<0xff")
+        print("chr(len(data_bytes))=",chr(len(data_bytes)))
+        print("chr(len(data_bytes)).encode()=",hexlify(chr(len(data_bytes)).encode()))
+        return b'\x4c' + struct.pack('B', len(data_bytes)) + data_bytes # modified
+#        return b'\x4c' + chr(len(data_bytes)).encode() + data_bytes
+    elif len(data_bytes) < 0xffff:
+        print("<0xffff")
+        return b'\x4d' + struct.pack('<H', len(data_bytes)) + data_bytes
+    elif len(data_bytes) < 0xffffffff:
+        print("<0xffffffff")
+        return b'\x4e' + struct.pack('<I', len(data_bytes)) + data_bytes
+    else:
+        raise ValueError("Data too large. Cannot push into script")
+
+bitcoinutils.script.Script._op_push_data = debug_op_push_data
+
+def encode_var_int(self,i):
+    """ Encodes integers into variable length integers, which are used in
+        Bitcoin in order to save space.
+    """
+    if not isinstance(i, int) and not isinstance(i, long):
+        raise Exception('i must be an integer')
+
+    if i <= 0xfc:
+        return (i).to_bytes(1, byteorder="little")
+    elif i <= 0xffff:
+        return b'\xfd' + (i).to_bytes(2, byteorder="little")
+    elif i <= 0xffffffff:
+        return b'\xfe' + (i).to_bytes(4, byteorder="little")
+    elif i <= 0xffffffffffffffff:
+        return b'\xff' + (i).to_bytes(8, byteorder="little")
+    else:
+        raise Exception('Integer cannot exceed 8 bytes in length.')
+
+bitcoinutils.transactions.TxInput.encode_var_int = encode_var_int

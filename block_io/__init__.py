@@ -62,7 +62,7 @@ class BlockIo(object):
             return hexlify(self.sign(unhexlify(hex_data), use_low_r))
 
         def privkey_hex(self):
-            return hexlify(self.private_key)
+            return hexlify(self.private_key.to_string())
         
         def pubkey_hex(self):
             return hexlify(self.public_key)
@@ -282,11 +282,8 @@ class BlockIo(object):
 
             tx_outputs.append(tx_output)
 
-
         tx = Transaction(tx_inputs, tx_outputs, has_segwit=has_segwit_inputs)
         
-        print("unsigned_payload=",tx.serialize())
-
         # start signing inputs
         signatures = []
         signatures_dict = dict() # makes our job easier for when we need to serialize the transaction with signatures
@@ -366,16 +363,18 @@ class BlockIo(object):
                     # P2SH, P2WSH-over-P2SH, or P2WSH (WITNESS_V0) input
 
                     # we will need the redeem script now
-                    redeem_script = get_redeem_script(cur_address_data['required_signatures'], cur_public_keys)
-                    script_elements = ["OP_0"] # the blank push
+                    redeem_script = self.create_redeem_script(cur_address_data['required_signatures'], cur_public_keys)
+                    script_elements = [""] # the blank push
 
                     signatures_left = cur_address_data['required_signatures'] + 0
                     
                     for public_key in cur_public_keys:
                         if (signatures_left > 0):
                             # append signatures only if we haven't reached the required number of signatures yet
-                            script_elements.append(signature_with_sighash(signatures_dict[str(cur_input_index)][public_key]))
-                            signatures_left = signatures_left - 1
+                            if public_key in signatures_dict[str(cur_input_index)]:
+#                                print(signature_with_sighash(signatures_dict[str(cur_input_index)][public_key]))
+                                script_elements.append(signature_with_sighash(signatures_dict[str(cur_input_index)][public_key]))
+                                signatures_left = signatures_left - 1
 
                     if (signatures_left > 0):
                         raise BlockIoUnknownError("Signatures left should be zero, but signatures_left=", signatures_left)
@@ -384,13 +383,13 @@ class BlockIo(object):
 
                     script_sig = Script(script_elements)
 
-                    if address_type == "P2SH":
+                    if cur_address_type == "P2SH":
                         tx_inputs[cur_input_index].script_sig = script_sig
                     else:
                         # P2WSH-over-P2SH and P2WSH (WITNESS_V0)
-                        tx_inputs[cur_input_index].witnesses.append(script_sig)
+                        tx.witnesses.append(script_sig)
 
-                    if address_type == "P2WSH-over-P2SH":
+                    if cur_address_type == "P2WSH-over-P2SH":
                         # needs script_sig set as well
                         tx_inputs[cur_input_index].script_sig = Script([get_output_script(P2wshAddress.from_script(redeem_script).to_string()).to_hex()])
                         
@@ -403,7 +402,7 @@ class BlockIo(object):
                         tx_inputs[cur_input_index].script_sig = script_sig
                     else:
                         # P2WPKH-over-P2SH and P2WPKH
-                        tx_inputs[cur_input_index].witnesses.append(script_sig)
+                        tx.witnesses.append(script_sig)
 
                     if cur_address_type == "P2WPKH-over-P2SH":
                         # needs script_sig set as well
@@ -419,8 +418,6 @@ class BlockIo(object):
         # remove all private keys from self
         self.private_keys = []
         
-        print(json.dumps(response))
-
         return response
 
     def api_call(self, method, **kwargs):
