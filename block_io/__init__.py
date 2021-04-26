@@ -6,7 +6,6 @@ import json
 import requests
 import pkg_resources
 
-from ecdsa import SigningKey, SECP256k1, util
 from hashlib import sha256
 from . import pbkdf2
 
@@ -33,39 +32,25 @@ class BlockIoAPIError(Exception):
 class BlockIo(object):
 
     class Key:
+        # wrapper around bitcoinutils.keys.PrivateKey
+        def __init__(self, privkey, pubkey = None):
+            # we will always use compressed public keys
+            self.private_key = bitcoinutils.keys.PrivateKey(secret_exponent=int(hexlify(privkey),16))
+            self.public_key = self.private_key.get_public_key()
 
-        def __init__(self, privkey, pubkey = None, compressed = True):
-            self.private_key = SigningKey.from_string(privkey, SECP256k1, sha256)
-
-            if (compressed):
-                # use the compressed public key
-                self.public_key = BlockIo.Helper.compress_pubkey(self.private_key.get_verifying_key().to_string())
-            else:
-                # use the uncompressed public key
-                self.public_key = unhexlify('04' + hexlify(self.private_key.get_verifying_key().to_string()).decode("utf-8"))
-
-        def sign(self, data_to_sign, use_low_r = True):
-            counter = 0
-
-            while True:
-                extra_entropy = b""
-                if (counter > 0):
-                    extra_entropy = bytearray.fromhex(hex(counter).split("x")[1].rjust(64,"0"))[::-1]
-                der_sig = hexlify(self.private_key.sign_digest_deterministic(data_to_sign, sha256, util.sigencode_der_canonize, extra_entropy))
-                if use_low_r == False or (int(der_sig[6:8],16) == 32 and int(der_sig[8:10],16) < 128): #  der_sig[3] == 32 and der_sig[4] < 128):
-                    break
-                counter = counter + 1
-                    
+        def sign(self, data_to_sign):
+            # use the sign_input method from bitcoinutils.keys.PrivateKey
+            der_sig = self.private_key._sign_input(data_to_sign, bitcoinutils.constants.SIGHASH_ALL)
             return unhexlify(der_sig)
 
-        def sign_hex(self, hex_data, use_low_r = True):
-            return hexlify(self.sign(unhexlify(hex_data), use_low_r))
+        def sign_hex(self, hex_data):
+            return hexlify(self.sign(unhexlify(hex_data)))
 
         def privkey_hex(self):
-            return hexlify(self.private_key.to_string())
+            return hexlify(self.private_key.to_bytes()) # to_hex()
         
         def pubkey_hex(self):
-            return hexlify(self.public_key)
+            return self.public_key.to_hex(compressed=True).encode()
 
         @staticmethod
         def from_passphrase(passphrase):
@@ -86,7 +71,10 @@ class BlockIo(object):
 
             # is this a compressed WIF or not?
             is_compressed = len(hexlify(extended_key_bytes)) == 68 and hexlify(extended_key_bytes)[-2:].decode("utf-8") == "01"
-            
+
+            if is_compressed == False:
+                raise Exception("WIF must always be compressed.")
+        
             # Drop the network bytes
             extended_key_bytes = extended_key_bytes[1:]
 
@@ -95,7 +83,7 @@ class BlockIo(object):
             if (len(private_key) == 33):
                 private_key = extended_key_bytes[:-1]
 
-            return BlockIo.Key(private_key, None, is_compressed)
+            return BlockIo.Key(private_key, None)
 
     class Helper:
 

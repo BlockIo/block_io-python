@@ -75,7 +75,7 @@ def low_r_sign_input(self, tx_digest, sighash=bitcoinutils.constants.SIGHASH_ALL
     while True:
         extra_entropy = b""
         if (counter > 0):
-            extra_entropy = bytearray.fromhex(hex(counter).split("x")[1].rjust(64,"0"))[::-1]
+            extra_entropy = (counter).to_bytes(32, byteorder="little") # bytearray.fromhex(hex(counter).split("x")[1].rjust(64,"0"))[::-1]
         der_sig = hexlify(self.key.sign_digest_deterministic(tx_digest, hashlib.sha256, ecdsa.util.sigencode_der_canonize, extra_entropy))
         if (int(der_sig[6:8],16) == 32 and int(der_sig[8:10],16) < 128):
             break
@@ -127,7 +127,7 @@ def get_output_script(address):
 # returns signature with sighash
 def signature_with_sighash(signature, sighash = bitcoinutils.constants.SIGHASH_ALL):
     # takes signature as a hex
-    return hexlify(unhexlify(signature) + struct.pack('B', sighash))
+    return hexlify(unhexlify(signature) + (sighash).to_bytes(1, byteorder="big")) # byte order doesn't matter here since it's just one byte struct.pack('B', sighash))
 ####
 
 # patch TxInput.stream() to use varints
@@ -143,7 +143,7 @@ def patch_txin_stream(self):
     # - note that we reverse the byte order for the tx hash since the string
     #   was displayed in little-endian!
     # - note that python's struct uses little-endian by default
-    txid_bytes = unhexlify(self.txid)[::-1]
+    txid_bytes = (int(self.txid,16)).to_bytes(32, byteorder="little") # unhexlify(self.txid)[::-1]
     txout_bytes = (self.txout_index).to_bytes(4, byteorder="little")
     script_sig_bytes = self.script_sig.to_bytes()
     data = txid_bytes + txout_bytes + self.encode_var_int(len(script_sig_bytes)) + script_sig_bytes + self.sequence # modified to use varints
@@ -157,7 +157,7 @@ def encode_var_int(self,i):
         raise Exception('i must be an integer')
 
     if i <= 0xfc:
-        return struct.pack('B', i)
+        return (i).to_bytes(1, byteorder="little") # struct.pack('B', i)
     elif i <= 0xffff:
         return b'\xfd' + (i).to_bytes(2, byteorder="little")
     elif i <= 0xffffffff:
@@ -178,9 +178,9 @@ def patch_op_push_data(self, data):
     data_bytes = unhexlify(data)
 
     if len(data_bytes) < 0x4c:
-        return struct.pack('B', len(data_bytes)) + data_bytes
+        return (len(data_bytes)).to_bytes(1, byteorder="little") + data_bytes # struct.pack('B', len(data_bytes)) + data_bytes
     elif len(data_bytes) < 0xff:
-        return b'\x4c' + struct.pack('B', len(data_bytes)) + data_bytes # was buggy (failing dTrust 4-of-5 full tx serialization failed), which prompted this re-write
+        return b'\x4c' + (len(data_bytes)).to_bytes(1, byteorder="little") + data_bytes # was buggy (failing dTrust 4-of-5 full tx serialization failed), which prompted this re-write
     elif len(data_bytes) < 0xffff:
         return b'\x4d' + (len(data_bytes)).to_bytes(2, byteorder="little") + data_bytes
     elif len(data_bytes) < 0xffffffff:
