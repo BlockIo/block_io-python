@@ -50,7 +50,7 @@ class BlockIo(object):
             return hexlify(self.private_key.to_bytes()) # to_hex()
         
         def pubkey_hex(self):
-            return self.public_key.to_hex(compressed=True).encode()
+            return self.public_key.to_hex(compressed=True).encode('utf-8')
 
         @staticmethod
         def from_passphrase(passphrase):
