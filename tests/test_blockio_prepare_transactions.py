@@ -66,7 +66,7 @@ class TestBlockIoPrepareTransactions(unittest.TestCase):
 
         response = self.blockio.create_and_sign_transaction(prepare_transaction_response, keys=self.dtrust_keys[:3])
 
-        self.assertDictEqual(create_and_sign_transaction_response, json.loads(json.dumps(response)))
+        self.assertDictEqual(create_and_sign_transaction_response, response)
 
     def test_prepare_transaction_dtrust_p2sh_4_of_5_keys(self):
         # P2SH dTrust full
@@ -86,7 +86,7 @@ class TestBlockIoPrepareTransactions(unittest.TestCase):
 
         response = self.blockio.create_and_sign_transaction(prepare_transaction_response, keys=self.dtrust_keys[:3])
 
-        self.assertDictEqual(create_and_sign_transaction_response, json.loads(json.dumps(response)))
+        self.assertDictEqual(create_and_sign_transaction_response, response)
 
     def test_prepare_transaction_dtrust_p2wsh_over_p2sh_4_of_5_keys(self):
         # P2WSH-over-P2SH dTrust full
@@ -106,7 +106,7 @@ class TestBlockIoPrepareTransactions(unittest.TestCase):
 
         response = self.blockio.create_and_sign_transaction(prepare_transaction_response, keys=self.dtrust_keys[:3])
 
-        self.assertDictEqual(create_and_sign_transaction_response, json.loads(json.dumps(response)))
+        self.assertDictEqual(create_and_sign_transaction_response, response)
 
     def test_prepare_transaction_dtrust_witness_v0_4_of_5_keys(self):
         # P2WSH (WITNESS_V0) dTrust full
