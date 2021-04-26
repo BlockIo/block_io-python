@@ -10,6 +10,8 @@ from ecdsa import SigningKey, SECP256k1, util
 from hashlib import sha256
 from . import pbkdf2
 
+from .bitcoinutils_patches import *
+
 VERSION=pkg_resources.get_distribution("block-io").version
 
 class BlockIoInvalidResponseError(Exception):
@@ -59,6 +61,9 @@ class BlockIo(object):
         def sign_hex(self, hex_data, use_low_r = True):
             return hexlify(self.sign(unhexlify(hex_data), use_low_r))
 
+        def privkey_hex(self):
+            return hexlify(self.private_key)
+        
         def pubkey_hex(self):
             return hexlify(self.public_key)
 
@@ -163,103 +168,260 @@ class BlockIo(object):
         self.clientVersion = VERSION
         self.encryption_key = None
         self.base_url = 'https://block.io/api/v'+str(version)+'/API_CALL/?api_key='+api_key
-        self.withdraw_calls = ['withdraw', 'withdraw_from_address', 'withdraw_from_addresses', 'withdraw_from_label', 'withdraw_from_labels', 'withdraw_from_user_id', 'withdraw_from_users']
-        self.sweep_calls = ['sweep_from_address']
+        self.sweep_calls = ['prepare_sweep_transaction']
         self.request_headers = {'Accept': 'application/json', 'User-Agent': 'python:block_io:'+self.clientVersion}
-
+        self.private_keys = dict()
+        
     def __getattr__(self, attr, *args, **kwargs):
 
         def hook(*args, **kwargs):
             return self.api_call(attr, **kwargs)
 
-        def withdraw_hook(*args, **kwargs):
-            return self.withdraw_meta(attr, **kwargs)
-
         def sweep_hook(*args, **kwargs):
-            return self.sweep_meta(attr, **kwargs)
+            return self.internal_prepare_sweep_transaction(attr, **kwargs)
 
-        if any(attr in s for s in self.withdraw_calls):
-            return withdraw_hook
-        elif any(attr in s for s in self.sweep_calls):
+        if any(attr in s for s in self.sweep_calls):
             return sweep_hook
         else:
             return hook
 
 
-    def sweep_meta(self, method, **kwargs):
+    def internal_prepare_sweep_transaction(self, method, **kwargs):
         # sweep call meta
-
-        if (self.version == 1):
-            # only available for API v2 users
-            raise Exception("Current version (API V1) does not support the Sweep functionality.")
 
         key = self.Key.from_wif(kwargs['private_key'])
 
         del kwargs['private_key'] # remove the key, we're not going to pass it on
         kwargs['public_key'] = key.pubkey_hex().decode("utf-8")
 
+        # save the key for later use
+        self.private_keys[key.pubkey_hex().decode('utf-8')] = PrivateKey(secret_exponent=int(key.privkey_hex().decode('utf-8'),16))
+        
         response = self.api_call(method, **kwargs)
 
-        if 'reference_id' in response['data'].keys():
-            # we need to sign some stuff, let's get to it
+        return response
 
-            # sign all the data we can
+    def create_redeem_script(self, required_signatures, public_keys):
+        # returns the redeem script given the ordered public_keys and required signatures
 
-            for inputobj in response['data']['inputs']:
-                for signer in inputobj['signers']:
-                    # we have the required pubkey? sign it!
-                    if (signer['signer_public_key'] == key.pubkey_hex().decode('utf-8')):
-                        signer['signed_data'] = key.sign_hex(inputobj['data_to_sign']).decode('utf-8')
+        script_elements = []
+        script_elements.append('OP_' + str(required_signatures))
 
-            args = { 'signature_data': json.dumps(response['data']) }
+        for public_key in public_keys:
+            script_elements.append(public_key)
 
-            response = self.api_call('sign_and_finalize_sweep', **args)
+        script_elements.append('OP_' + str(len(public_keys)))
+        script_elements.append('OP_CHECKMULTISIG')
 
-            if ('network_fee' not in response['data'].keys()):
-                # we didn't get the transaction ID as proof of sweep, something went wrong
-                raise Exception('Sweep failed:', response['data']['error_message'])
+        return Script(script_elements)
+        
+    def create_and_sign_transaction(self, prepare_data, keys = []):
+        # creates the specified transaction with the inputs and outputs
+        # signs what we can and returns payload and signatures left to append, if any
 
-            return response
-        else:
-            # sweep processed
-            return response
+        # set the appropriate network first
+        bitcoinutils_patches.bitcoinutils_setup(prepare_data['data']['network'])
+        
+        # save the provided keys so we can use them below
+        for cur_key_hex in keys:
+            cur_key = PrivateKey(secret_exponent=int(cur_key_hex,16))
+            self.private_keys[cur_key.get_public_key().to_hex(compressed=True)] = cur_key
 
-    def withdraw_meta(self, method, **kwargs):
-        # withdraw call meta
+        if self.encryption_key is None and self.pin is None and 'user_key' in prepare_data['data']:
+            raise BlockIoUnknownError("No PIN provided to decrypt signer private key.")
+        
+        if self.encryption_key is None and 'user_key' in prepare_data['data']:
+            self.encryption_key = self.Helper.pinToAesKey(self.pin)
 
-        # no inadvertent passing of pin
-        kwargs.pop('pin', None)
+        # decrypt the signer private key if we can
+        if self.encryption_key is not None and 'user_key' in prepare_data['data']:
+            key = self.Helper.extractKey(prepare_data['data']['user_key']['encrypted_passphrase'], self.encryption_key)
 
-        response = self.api_call(method, **kwargs)
+            if (key.pubkey_hex().decode('utf-8') != prepare_data['data']['user_key']['public_key']):
+                raise Exception("Expected pubkey=",prepare_data['data']['user_key']['public_key'],"but got pubkey=",key.pubkey_hex(),". Invalid PIN provided.")
+            
+            self.private_keys[key.pubkey_hex().decode('utf-8')] = PrivateKey(secret_exponent=int(key.privkey_hex().decode('utf-8'),16))
 
-        if 'reference_id' in response['data'].keys():
-            # we need to sign some stuff, let's get to it
+        # we can create the transaction now
+        inputs = prepare_data['data']['inputs']
+        outputs = prepare_data['data']['outputs']
 
-            if self.encryption_key is None:
-                self.encryption_key = self.Helper.pinToAesKey(self.pin)
+        # create a dictionary for these input addresses
+        input_address_data = prepare_data['data']['input_address_data']
+        address_data = dict()
 
-            key = self.Helper.extractKey(response['data']['encrypted_passphrase']['passphrase'], self.encryption_key)
+        for input_address in input_address_data:
+            address_data[input_address['address']] = input_address
+            
+        has_segwit_inputs = False
+        
+        # create the transaction
 
-            # sign all the data we can
+        # inputs
+        tx_inputs = []
 
-            for inputobj in response['data']['inputs']:
-                for signer in inputobj['signers']:
-                    # we have the required pubkey? sign it!
-                    if (signer['signer_public_key'] == key.pubkey_hex().decode('utf-8')):
-                        signer['signed_data'] = key.sign_hex(inputobj['data_to_sign']).decode('utf-8')
+        for cur_input in inputs:
+            tx_input = TxInput(cur_input['previous_txid'], cur_input['previous_output_index'])
+            cur_address_data = address_data[cur_input['spending_address']]
+            cur_address_type = cur_address_data['address_type']
 
-            args = { 'signature_data': json.dumps(response['data']) }
+            # if this transaction has any segwit inputs, set has_segwit_inputs
+            if (cur_address_type == 'P2WSH-over-P2SH' or
+                cur_address_type == 'P2WPKH-over-P2SH' or
+                cur_address_type == 'P2WPKH' or
+                cur_address_type == 'WITNESS_V0'):
+                has_segwit_inputs = True
 
-            response = self.api_call('sign_and_finalize_withdrawal', **args)
+            tx_inputs.append(tx_input)
 
-            if ('reference_id' in response['data'].keys()):
-                # this is a 2 of 2 address, it should've accepted our signature
-                raise Exception('Invalid Secret PIN or insufficient signatures for withdrawal.')
+        # outputs
+        tx_outputs = []
+        
+        for cur_output in outputs:
+            tx_output = TxOutput(bitcoinutils.utils.to_satoshis(cur_output['output_value']), get_output_script(cur_output['receiving_address']))
 
-            return response
-        else:
-            # withdrawal processed
-            return response
+            tx_outputs.append(tx_output)
+
+
+        tx = Transaction(tx_inputs, tx_outputs, has_segwit=has_segwit_inputs)
+        
+        print("unsigned_payload=",tx.serialize())
+
+        # start signing inputs
+        signatures = []
+        signatures_dict = dict() # makes our job easier for when we need to serialize the transaction with signatures
+        tx_fully_signed = True # assume tx will be fully signed
+        
+        for cur_input in inputs:
+            cur_address_data = address_data[cur_input['spending_address']]
+            cur_public_keys = cur_address_data['public_keys']
+            cur_address_type = cur_address_data['address_type']
+            cur_required_signatures = cur_address_data['required_signatures']
+            cur_signatures = dict()
+            
+            if cur_address_type == 'P2SH' or cur_address_type == 'P2WSH-over-P2SH' or cur_address_type == 'WITNESS_V0':
+                # P2SH, or P2WSH-over-P2SH, or P2WSH (WITNESS_V0) input
+
+                redeem_script = self.create_redeem_script(cur_required_signatures, cur_public_keys)
+                
+                # sign for each public key, if we can
+                for public_key in cur_public_keys:
+                    if (public_key in self.private_keys):
+                        if (cur_address_type == 'P2SH'):
+                            # P2SH address
+                            cur_signatures[public_key] = self.private_keys[public_key].sign_input(tx, cur_input['input_index'], redeem_script)
+                        else:
+                            # witness input
+                            cur_signatures[public_key] = self.private_keys[public_key].sign_segwit_input(tx,
+                                                                                                         cur_input['input_index'],
+                                                                                                         redeem_script,
+                                                                                                         bitcoinutils.utils.to_satoshis(cur_input['input_value']))
+                            
+                if (len(cur_signatures) < cur_required_signatures):
+                    # transaction is going to be missing signatures
+                    # we'll need to use Block.io's signatures as well
+                    tx_fully_signed = False
+
+            elif cur_address_type == 'P2PKH' or cur_address_type == 'P2WPKH-over-P2SH' or cur_address_type == 'P2WPKH':
+                pkh_script = get_output_script(PublicKey(cur_public_keys[0]).get_address().to_string())
+
+                if (cur_public_keys[0] in self.private_keys):
+                    if cur_address_type == 'P2PKH':
+                        # P2PKH address
+                        cur_signatures[cur_public_keys[0]] = self.private_keys[cur_public_keys[0]].sign_input(tx, cur_input['input_index'], pkh_script)
+                    else:
+                        # witness input
+                        cur_signatures[cur_public_keys[0]] = self.private_keys[cur_public_keys[0]].sign_segwit_input(tx,
+                                                                                                                     cur_input['input_index'],
+                                                                                                                     pkh_script,
+                                                                                                                     bitcoinutils.utils.to_satoshis(cur_input['input_value']))
+
+            else:
+                raise Exception("Unrecognized address type:", cur_address_type)
+
+            # signatures done here for this input
+            # append signatures to our signatures array
+            for public_key in cur_signatures:
+                signatures.append({'public_key': public_key, 'signature': cur_signatures[public_key].decode('utf-8'), 'input_index': cur_input['input_index']})
+
+                if (str(cur_input['input_index']) not in signatures_dict):
+                    signatures_dict[str(cur_input['input_index'])] = dict()
+
+                signatures_dict[str(cur_input['input_index'])][public_key] = cur_signatures[public_key]
+
+        # this will be our response object
+        response = {"tx_type": prepare_data['data']['tx_type'], "tx_hex": None, "signatures": None}
+        
+        if tx_fully_signed == True:
+            # if the transaction is fully signed, we will just serialize it with all the signatures
+
+            for cur_input in inputs:
+                # for each input, prepare the script_sig and/or witnesses
+                cur_address_data = address_data[cur_input['spending_address']]
+                cur_public_keys = cur_address_data['public_keys']
+                cur_address_type = cur_address_data['address_type']
+                cur_input_index = cur_input['input_index']
+                
+                if cur_address_data['required_signatures'] > 1:
+                    # P2SH, P2WSH-over-P2SH, or P2WSH (WITNESS_V0) input
+
+                    # we will need the redeem script now
+                    redeem_script = get_redeem_script(cur_address_data['required_signatures'], cur_public_keys)
+                    script_elements = ["OP_0"] # the blank push
+
+                    signatures_left = cur_address_data['required_signatures'] + 0
+                    
+                    for public_key in cur_public_keys:
+                        if (signatures_left > 0):
+                            # append signatures only if we haven't reached the required number of signatures yet
+                            script_elements.append(signature_with_sighash(signatures_dict[str(cur_input_index)][public_key]))
+                            signatures_left = signatures_left - 1
+
+                    if (signatures_left > 0):
+                        raise BlockIoUnknownError("Signatures left should be zero, but signatures_left=", signatures_left)
+
+                    script_elements.append(redeem_script.to_hex())
+
+                    script_sig = Script(script_elements)
+
+                    if address_type == "P2SH":
+                        tx_inputs[cur_input_index].script_sig = script_sig
+                    else:
+                        # P2WSH-over-P2SH and P2WSH (WITNESS_V0)
+                        tx_inputs[cur_input_index].witnesses.append(script_sig)
+
+                    if address_type == "P2WSH-over-P2SH":
+                        # needs script_sig set as well
+                        tx_inputs[cur_input_index].script_sig = Script([get_output_script(P2wshAddress.from_script(redeem_script).to_string()).to_hex()])
+                        
+                else:
+                    # P2PKH, P2WPKH-over-P2SH, or P2WPKH
+                    cur_signature = signatures_dict[str(cur_input_index)][cur_public_keys[0]]
+                    script_sig = Script([signature_with_sighash(cur_signature), cur_public_keys[0]])
+
+                    if cur_address_type == "P2PKH":
+                        tx_inputs[cur_input_index].script_sig = script_sig
+                    else:
+                        # P2WPKH-over-P2SH and P2WPKH
+                        tx_inputs[cur_input_index].witnesses.append(script_sig)
+
+                    if cur_address_type == "P2WPKH-over-P2SH":
+                        # needs script_sig set as well
+                        tx_inputs[cur_input_index].script_sig = Script([get_output_script(PublicKey(cur_public_keys[0]).get_segwit_address().to_string()).to_hex()])
+
+
+        if (tx_fully_signed == False):
+            # we have signatures to append
+            response["signatures"] = signatures
+            
+        response["tx_hex"] = tx.serialize() # the payload
+
+        # remove all private keys from self
+        self.private_keys = []
+        
+        print(json.dumps(response))
+
+        return response
 
     def api_call(self, method, **kwargs):
         # the actual API call
