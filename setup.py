@@ -17,7 +17,7 @@ setup(name='block-io',
       install_requires=[
           'requests>=2.20.0',
           'pycryptodome>=3.9.8,<4.0',
-#          'ecdsa==0.16.1',
+          'ecdsa==0.16.1',
           'base58==1.0.3',
           'bitcoin-utils @ git+https://github.com/doersf/python-bitcoin-utils.git@minimal'
       ],
