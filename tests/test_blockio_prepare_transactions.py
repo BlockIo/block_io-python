@@ -66,7 +66,7 @@ class TestBlockIoPrepareTransactions(unittest.TestCase):
 
         response = self.blockio.create_and_sign_transaction(prepare_transaction_response, keys=self.dtrust_keys[:3])
 
-        self.assertDictEqual(create_and_sign_transaction_response, response)
+        self.assertDictEqual(create_and_sign_transaction_response, json.loads(json.dumps(response)))
 
     def test_prepare_transaction_dtrust_p2sh_4_of_5_keys(self):
         # P2SH dTrust full
