@@ -364,7 +364,7 @@ class BlockIo(object):
 
                     # we will need the redeem script now
                     redeem_script = self.create_redeem_script(cur_address_data['required_signatures'], cur_public_keys)
-                    script_elements = [""] # the blank push
+                    script_elements = ["OP_0"] # the blank push
 
                     signatures_left = cur_address_data['required_signatures'] + 0
                     
@@ -372,7 +372,6 @@ class BlockIo(object):
                         if (signatures_left > 0):
                             # append signatures only if we haven't reached the required number of signatures yet
                             if public_key in signatures_dict[str(cur_input_index)]:
-#                                print(signature_with_sighash(signatures_dict[str(cur_input_index)][public_key]))
                                 script_elements.append(signature_with_sighash(signatures_dict[str(cur_input_index)][public_key]))
                                 signatures_left = signatures_left - 1
 

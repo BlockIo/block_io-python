@@ -39,7 +39,7 @@ bitcoinutils.constants.NETWORK_SEGWIT_PREFIXES = { 'BTC': 'bc',
                                                    'DOGETEST': 'tdge'
                                                   }
 
-bitcoinutils.constants.DEFAULT_TX_VERSION =  b'\x01\x00\x00\x00' # little-ended version 1
+bitcoinutils.constants.DEFAULT_TX_VERSION =  (1).to_bytes(4, byteorder="little") # b'\x01\x00\x00\x00' # little-ended version 1
 
 from bitcoinutils.setup import setup as bitcoinutils_setup
 from bitcoinutils.setup import get_network as bitcoinutils_get_network
@@ -108,23 +108,15 @@ def get_output_script(address):
 
         # the address is fine, let's figure out if it's P2SH or P2PKH format
         if (bitcoinutils.constants.NETWORK_P2SH_PREFIXES[bitcoinutils_get_network()] == unhexlify(network_prefix)):
-#            print("P2SH=",address)
             output_script = Script(['OP_HASH160', address_hash160, 'OP_EQUAL'])
         elif (bitcoinutils.constants.NETWORK_P2PKH_PREFIXES[bitcoinutils_get_network()] == unhexlify(network_prefix)):
-#            print("P2PKH=",address)
             output_script = Script(['OP_DUP', 'OP_HASH160', address_hash160, 'OP_EQUALVERIFY', 'OP_CHECKSIG'])
         else:
             raise Exception("Invalid address provided")
-        #checksum = data_checksum[-4:]
-#        return hexlify(data).decode('utf-8') 
     elif decoded_bech32[0] == 0:
         # only support witness v0 addresses for now
         # it's a bech32 address
-#        print(decoded_bech32)
-#        print(hexlify(bytearray(decoded_bech32[1])))
-#        print("bech32 address:", address)
         output_script = Script(["OP_" + str(decoded_bech32[0]), hexlify(bytearray(decoded_bech32[1]))])
-#        print(output_script.to_hex())
     else:
         raise Exception("Unsupported address provided")
 
@@ -138,7 +130,8 @@ def signature_with_sighash(signature, sighash = bitcoinutils.constants.SIGHASH_A
     return hexlify(unhexlify(signature) + struct.pack('B', sighash))
 ####
 
-def debug_txin_stream(self):
+# patch TxInput.stream() to use varints
+def patch_txin_stream(self):
     """Converts to bytes"""
     
     # Internally Bitcoin uses little-endian byte order as it improves
@@ -151,71 +144,10 @@ def debug_txin_stream(self):
     #   was displayed in little-endian!
     # - note that python's struct uses little-endian by default
     txid_bytes = unhexlify(self.txid)[::-1]
-    txout_bytes = struct.pack('<L', self.txout_index)
+    txout_bytes = (self.txout_index).to_bytes(4, byteorder="little")
     script_sig_bytes = self.script_sig.to_bytes()
-#        struct.pack('B', len(script_sig_bytes)) + \
     data = txid_bytes + txout_bytes + self.encode_var_int(len(script_sig_bytes)) + script_sig_bytes + self.sequence # modified to use varints
     return data
-
-bitcoinutils.transactions.TxInput.stream = debug_txin_stream
-
-from bitcoinutils.utils import prepend_compact_size
-from bitcoinutils.script import OP_CODES
-
-def debug_to_bytes(self, segwit = False):
-    #Converts the script to bytes
-    #    If an OP code the appropriate byte is included according to:
-    #    https://en.bitcoin.it/wiki/Script
-    #    If not consider it data (signature, public key, public key hash, etc.) and
-    #    and include with appropriate OP_PUSHDATA OP code plus length
-    #    """
-    script_bytes = b''
-    for token in self.script:
-        # add op codes directly
-        if token in OP_CODES:
-            script_bytes += OP_CODES[token]
-            # if integer between 0 and 16 add the appropriate op code
-        elif type(token) is int and token >= 0 and token <= 16:
-            script_bytes += OP_CODES['OP_' + str(token)]
-            # it is data, so add accordingly
-        else:
-            if type(token) is int:
-                script_bytes += self._push_integer(token)
-            else:
-                if segwit:
-                    # probably add TxInputWitness which will know how to serialize
-                    script_bytes += self._segwit_op_push_data(token)
-                else:
-                    script_bytes += self._op_push_data(token)
-                    
-    return script_bytes
-
-bitcoinutils.script.Script.to_bytes = debug_to_bytes
-
-def debug_op_push_data(self, data):
-
-    data_bytes = unhexlify(data)
-
-    if len(data_bytes) < 0x4c:
-        print("<0x4c")
-        return struct.pack('B', len(data_bytes)) + data_bytes # modified
-#        return chr(len(data_bytes)).encode() + data_bytes
-    elif len(data_bytes) < 0xff:
-        print("<0xff")
-        print("chr(len(data_bytes))=",chr(len(data_bytes)))
-        print("chr(len(data_bytes)).encode()=",hexlify(chr(len(data_bytes)).encode()))
-        return b'\x4c' + struct.pack('B', len(data_bytes)) + data_bytes # modified
-#        return b'\x4c' + chr(len(data_bytes)).encode() + data_bytes
-    elif len(data_bytes) < 0xffff:
-        print("<0xffff")
-        return b'\x4d' + struct.pack('<H', len(data_bytes)) + data_bytes
-    elif len(data_bytes) < 0xffffffff:
-        print("<0xffffffff")
-        return b'\x4e' + struct.pack('<I', len(data_bytes)) + data_bytes
-    else:
-        raise ValueError("Data too large. Cannot push into script")
-
-bitcoinutils.script.Script._op_push_data = debug_op_push_data
 
 def encode_var_int(self,i):
     """ Encodes integers into variable length integers, which are used in
@@ -225,7 +157,7 @@ def encode_var_int(self,i):
         raise Exception('i must be an integer')
 
     if i <= 0xfc:
-        return (i).to_bytes(1, byteorder="little")
+        return struct.pack('B', i)
     elif i <= 0xffff:
         return b'\xfd' + (i).to_bytes(2, byteorder="little")
     elif i <= 0xffffffff:
@@ -236,3 +168,26 @@ def encode_var_int(self,i):
         raise Exception('Integer cannot exceed 8 bytes in length.')
 
 bitcoinutils.transactions.TxInput.encode_var_int = encode_var_int
+bitcoinutils.transactions.TxInput.stream = patch_txin_stream
+####
+
+# fix _op_push_data for len(data_bytes) > 0x4c and < 0xff
+# modified to be more readable and uniform
+def patch_op_push_data(self, data):
+
+    data_bytes = unhexlify(data)
+
+    if len(data_bytes) < 0x4c:
+        return struct.pack('B', len(data_bytes)) + data_bytes
+    elif len(data_bytes) < 0xff:
+        return b'\x4c' + struct.pack('B', len(data_bytes)) + data_bytes # was buggy (failing dTrust 4-of-5 full tx serialization failed), which prompted this re-write
+    elif len(data_bytes) < 0xffff:
+        return b'\x4d' + (len(data_bytes)).to_bytes(2, byteorder="little") + data_bytes
+    elif len(data_bytes) < 0xffffffff:
+        return b'\x4e' + (len(data_bytes)).to_bytes(4, byteorder="little") + data_bytes
+    else:
+        raise ValueError("Data too large. Cannot push into script")
+
+bitcoinutils.script.Script._op_push_data = patch_op_push_data
+####
+
