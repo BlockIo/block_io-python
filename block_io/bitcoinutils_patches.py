@@ -2,7 +2,6 @@ from decimal import Decimal
 from binascii import hexlify, unhexlify
 import hashlib
 import ecdsa
-import struct
 import bitcoinutils.constants
 import bitcoinutils.bech32
 import base58check
@@ -46,17 +45,6 @@ from bitcoinutils.setup import get_network as bitcoinutils_get_network
 from bitcoinutils.keys import P2pkhAddress, PrivateKey, PublicKey, P2shAddress, P2wshAddress, Address
 from bitcoinutils.script import Script
 from bitcoinutils.transactions import Transaction, TxInput, TxOutput
-
-# override the method in bitcoinutils so it doesn't use floats anymore
-def fixed_to_satoshis(num):
-    
-    if (isinstance(num, str) == False):
-        raise Exception("Must specify a string for to_satoshis")
-
-    return int(Decimal(num) * Decimal("100000000"))
-
-bitcoinutils.utils.to_satoshis = fixed_to_satoshis
-####
 
 # add p2sh_address.to_script_pub_key()
 def added_p2sh_to_script_pub_key(self):
@@ -129,65 +117,3 @@ def signature_with_sighash(signature, sighash = bitcoinutils.constants.SIGHASH_A
     # takes signature as a hex
     return hexlify(unhexlify(signature) + (sighash).to_bytes(1, byteorder="big")) # byte order doesn't matter here since it's just one byte struct.pack('B', sighash))
 ####
-
-# patch TxInput.stream() to use varints
-def patch_txin_stream(self):
-    """Converts to bytes"""
-    
-    # Internally Bitcoin uses little-endian byte order as it improves
-    # speed. Hashes are defined and implemented as big-endian thus
-    # those are transmitted in big-endian order. However, when hashes are
-    # displayed Bitcoin uses little-endian order because it is sometimes
-    # convenient to consider hashes as little-endian integers (and not
-    # strings)
-    # - note that we reverse the byte order for the tx hash since the string
-    #   was displayed in little-endian!
-    # - note that python's struct uses little-endian by default
-    txid_bytes = (int(self.txid,16)).to_bytes(32, byteorder="little") # unhexlify(self.txid)[::-1]
-    txout_bytes = (self.txout_index).to_bytes(4, byteorder="little")
-    script_sig_bytes = self.script_sig.to_bytes()
-    data = txid_bytes + txout_bytes + self.encode_var_int(len(script_sig_bytes)) + script_sig_bytes + self.sequence # modified to use varints
-    return data
-
-def encode_var_int(self,i):
-    """ Encodes integers into variable length integers, which are used in
-        Bitcoin in order to save space.
-    """
-    if not isinstance(i, int) and not isinstance(i, long):
-        raise Exception('i must be an integer')
-
-    if i <= 0xfc:
-        return (i).to_bytes(1, byteorder="little") # struct.pack('B', i)
-    elif i <= 0xffff:
-        return b'\xfd' + (i).to_bytes(2, byteorder="little")
-    elif i <= 0xffffffff:
-        return b'\xfe' + (i).to_bytes(4, byteorder="little")
-    elif i <= 0xffffffffffffffff:
-        return b'\xff' + (i).to_bytes(8, byteorder="little")
-    else:
-        raise Exception('Integer cannot exceed 8 bytes in length.')
-
-bitcoinutils.transactions.TxInput.encode_var_int = encode_var_int
-bitcoinutils.transactions.TxInput.stream = patch_txin_stream
-####
-
-# fix _op_push_data for len(data_bytes) > 0x4c and < 0xff
-# modified to be more readable and uniform
-def patch_op_push_data(self, data):
-
-    data_bytes = unhexlify(data)
-
-    if len(data_bytes) < 0x4c:
-        return (len(data_bytes)).to_bytes(1, byteorder="little") + data_bytes # struct.pack('B', len(data_bytes)) + data_bytes
-    elif len(data_bytes) < 0xff:
-        return b'\x4c' + (len(data_bytes)).to_bytes(1, byteorder="little") + data_bytes # was buggy (failing dTrust 4-of-5 full tx serialization failed), which prompted this re-write
-    elif len(data_bytes) < 0xffff:
-        return b'\x4d' + (len(data_bytes)).to_bytes(2, byteorder="little") + data_bytes
-    elif len(data_bytes) < 0xffffffff:
-        return b'\x4e' + (len(data_bytes)).to_bytes(4, byteorder="little") + data_bytes
-    else:
-        raise ValueError("Data too large. Cannot push into script")
-
-bitcoinutils.script.Script._op_push_data = patch_op_push_data
-####
-
