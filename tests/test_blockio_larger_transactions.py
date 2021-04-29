@@ -260,7 +260,7 @@ class TestBlockIoLargerTransactions(unittest.TestCase):
 
     def test_prepare_transaction_p2sh_1of2_762_inputs(self):
         # P2SH transaction with 762 inputs
-        # TODO failing
+
         prepare_transaction_response = self.load_json_file("data/json/prepare_transaction_response_P2WSH-over-P2SH_1of2_762inputs.json")
         create_and_sign_transaction_response = self.load_json_file("data/json/create_and_sign_transaction_response_P2WSH-over-P2SH_1of2_762inputs.json")
 
