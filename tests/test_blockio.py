@@ -9,9 +9,7 @@ from types import *
 from binascii import hexlify, unhexlify
 from ecdsa import rfc6979, SECP256k1, util
 from hashlib import sha256
-from decimal import Decimal, getcontext
-
-getcontext().prec = 8
+from decimal import Decimal
 
 class TestDeterministicSignatures(unittest.TestCase):
 

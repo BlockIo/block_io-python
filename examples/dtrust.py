@@ -16,7 +16,6 @@ version = 2 # API version
 
 # use a testnet api key here, say, dogecoin
 block_io = BlockIo(os.environ.get('BLOCK_IO_API_KEY'), os.environ.get('BLOCK_IO_PIN'), version)
-getcontext().prec = 8 # coins are 8 decimal places at most
 
 # create a new address with a random label
 address_label = 'dtrust'+str(int(random.random()*10000))

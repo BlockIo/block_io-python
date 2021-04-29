@@ -266,6 +266,7 @@ class BlockIo(object):
         tx_outputs = []
         
         for cur_output in outputs:
+            print("amount=", bitcoinutils.utils.to_satoshis(cur_output['output_value']))
             tx_output = TxOutput(bitcoinutils.utils.to_satoshis(cur_output['output_value']), get_output_script(cur_output['receiving_address']))
 
             tx_outputs.append(tx_output)
