@@ -44,6 +44,14 @@ class BlockIo(object):
             self.private_key = bitcoinutils.keys.PrivateKey(secret_exponent=int(hexlify(privkey),16))
             self.public_key = self.private_key.get_public_key()
 
+        @staticmethod
+        def generate():
+            return BlockIo.Key(bitcoinutils.keys.PrivateKey().to_bytes(), None)
+
+        @staticmethod
+        def from_privkey_hex(privkey):
+            return BlockIo.Key(unhexlify(privkey.rjust(64, "0")), None)
+        
         def sign(self, data_to_sign):
             # use the sign_input method from bitcoinutils.keys.PrivateKey
             der_sig = self.private_key._sign_input(data_to_sign, bitcoinutils.constants.SIGHASH_ALL)
@@ -53,7 +61,7 @@ class BlockIo(object):
             return hexlify(self.sign(unhexlify(hex_data)))
 
         def privkey_hex(self):
-            return hexlify(self.private_key.to_bytes()) # to_hex()
+            return hexlify(self.private_key.to_bytes())
         
         def pubkey_hex(self):
             return self.public_key.to_hex(compressed=True).encode('utf-8')
@@ -208,7 +216,40 @@ class BlockIo(object):
         script_elements.append('OP_CHECKMULTISIG')
 
         return Script(script_elements)
-        
+
+    def summarize_prepared_transaction(self, data):
+        # returns summary of the prepared data
+        # includes network fee, blockio fee, total amount to send
+
+        inputs = data['data']['inputs']
+        outputs = data['data']['outputs']
+
+        network_fee = Decimal(0)
+        blockio_fee = Decimal(0)
+        change_amount = Decimal(0)
+        input_sum = Decimal(0)
+        output_sum = Decimal(0)
+
+        # get the sum of coins being spent
+        for cur_input in inputs:
+            input_sum += Decimal(cur_input['input_value'])
+
+        # populate various categories of outputs
+        for cur_output in outputs:
+            if cur_output['output_category'] == 'blockio-fee':
+                blockio_fee += Decimal(cur_output['output_value'])
+            elif cur_output['output_category'] == 'change':
+                change_amount += Decimal(cur_output['output_value'])
+            else:
+                # user-specified
+                output_sum += Decimal(cur_output['output_value'])
+
+        # summarize the data
+        return {"network": data['data']['network'],
+                "network_fee": format(input_sum - output_sum - change_amount - blockio_fee, '.8f'),
+                "blockio_fee": format(blockio_fee, '.8f'),
+                "total_amount_to_send": format(output_sum, '.8f')}
+    
     def create_and_sign_transaction(self, prepare_data, keys = []):
         # creates the specified transaction with the inputs and outputs
         # signs what we can and returns payload and signatures left to append, if any
@@ -276,7 +317,12 @@ class BlockIo(object):
             tx_outputs.append(tx_output)
 
         tx = Transaction(tx_inputs, tx_outputs, has_segwit=has_segwit_inputs)
-        
+
+        # if we have expected unsigned txid, make sure this library's serialized the unsigned transaction properly
+        if 'expected_unsigned_txid' in prepare_data['data'] and prepare_data['data']['expected_unsigned_txid'] is not None:
+            if prepare_data['data']['expected_unsigned_txid'] != tx.get_txid():
+                raise Exception("Expected unsigned transaction ID mismatch. Please report this error to support@block.io.")
+                
         # start signing inputs
         signatures = []
         signatures_dict = dict() # makes our job easier for when we need to serialize the transaction with signatures
@@ -408,7 +454,7 @@ class BlockIo(object):
         response["tx_hex"] = tx.serialize() # the payload
 
         # remove all private keys from self
-        self.private_keys = []
+        self.private_keys = dict()
         
         return response
 
@@ -425,7 +471,7 @@ class BlockIo(object):
 
         # update the parameters with the API key
         session = requests.session()
-        response = session.post(self.base_url.replace('API_CALL',method), data = payload, headers = self.request_headers)
+        response = session.post(self.base_url.replace('API_CALL',method), json = payload, headers = self.request_headers)
         status_code = response.status_code
         
         try:

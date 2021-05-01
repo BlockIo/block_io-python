@@ -65,15 +65,28 @@ class TestKeys(unittest.TestCase):
     def setUp(self):
         self.priv = "6b0e34587dece0ef042c4c7205ce6b3d4a64d0bc484735b9325f7971a0ead963"
         self.passphrase = "deadbeeffeedface";
+        self.dtrust_keys = ["b515fd806a662e061b488e78e5d0c2ff46df80083a79818e166300666385c0a2",
+                            "1584b821c62ecdc554e185222591720d6fe651ed1b820d83f92cdc45c5e21f",
+                            "2f9090b8aa4ddb32c3b0b8371db1b50e19084c720c30db1d6bb9fcd3a0f78e61",
+                            "6c1cefdfd9187b36b36c3698c1362642083dcc1941dc76d751481d3aa29ca65"]
 
+        self.dtrust_pubkeys = ["02510e29d51e9a4268e6a5253c1fbd8144857945b82acb0accfc235cc7ca36da11",
+                               "0201a819bf549c253c4397bdd1535374de39e9bc278f637afdc27642d52cf79139",
+                               "039e3aa9ea182ccdaff2d8d150010b27cc4765c1d55ce674e52631af7376354d62",
+                               "03ee980e6334142342fcd9e6facfecfa139981e2276584c91d6a9739d533ac99fc"]
+        
     def test_key_init(self):
-        key = BlockIo.Key(unhexlify(self.priv))
+        key = BlockIo.Key.from_privkey_hex(self.priv)
         self.assertEqual(key.pubkey_hex(), b'029c06f988dc6b44696e002e8abf496a13c73c2f1db3bde2dfb69be129f3711b01')
 
     def test_from_passphrase(self):
         key = BlockIo.Key.from_passphrase(unhexlify(self.passphrase))
         self.assertEqual(key.pubkey_hex(), b'029023d9738c623cdd7e5fdd0f41666accb82f21df5d27dc5ef07040f7bdc5d9f5')
 
+    def test_dtrust_keys(self):
+        for i in range(len(self.dtrust_keys)):
+             self.assertEqual(BlockIo.Key.from_privkey_hex(self.dtrust_keys[i]).pubkey_hex().decode("utf-8"), self.dtrust_pubkeys[i])
+        
 class TestBlockIoAPIError(unittest.TestCase):
     def setUp(self):
         self.blockio = BlockIo("","",2)
