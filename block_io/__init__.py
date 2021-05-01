@@ -28,6 +28,12 @@ class BlockIoAPIInternalError(Exception):
 class BlockIoAPIError(Exception):
     """Thrown when block.io API call fails."""
 
+    def set_raw_data(self, data):
+        self.raw_data = data
+
+    def get_raw_data(self):
+        return self.raw_data
+    
 
 class BlockIo(object):
 
@@ -434,12 +440,11 @@ class BlockIo(object):
             raise BlockIoInvalidResponseError("Failed, invalid response received from Block.io, method %s" % method)
         elif ('status' in response.keys()) and (response['status'] == 'fail'):
 
-            if 'data' in response.keys() and 'error_message' in response['data'].keys():
-                # call failed, and error_message was provided
-                raise BlockIoAPIError('Failed: '+response['data']['error_message'])
-            else:
-                # call failed, and error_message was NOT provided
-                raise BlockIoAPIError("Failed, error_message was not provided, method %s" % method)
+            # give the user the raw response as well in the exception object
+            api_error = BlockIoAPIError(response['data']['error_message'])
+            api_error.set_raw_data(response)
+
+            raise api_error
 
         elif 500 <= status_code <= 599:
             # using the status_code since a JSON response was not provided

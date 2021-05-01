@@ -1,4 +1,4 @@
-from block_io import BlockIo
+from block_io import BlockIo, BlockIoAPIError
 
 import os
 import unittest
@@ -74,3 +74,14 @@ class TestKeys(unittest.TestCase):
         key = BlockIo.Key.from_passphrase(unhexlify(self.passphrase))
         self.assertEqual(key.pubkey_hex(), b'029023d9738c623cdd7e5fdd0f41666accb82f21df5d27dc5ef07040f7bdc5d9f5')
 
+class TestBlockIoAPIError(unittest.TestCase):
+    def setUp(self):
+        self.blockio = BlockIo("","",2)
+
+    def test_throws_blockio_api_error(self):
+        try:
+            self.blockio.get_balance()
+            self.assertEquals(True,False) # will fail if we get here
+        except BlockIoAPIError as e:
+            self.assertDictEqual(e.get_raw_data(), {"status": "fail", "data": {"error_message": "Invalid API Key provided for this API version."}})
+            
