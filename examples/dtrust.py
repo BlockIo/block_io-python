@@ -1,5 +1,5 @@
 # This script demonstrates use of 4 of 5 MultiSig addresses with the Distributed Trust API
-# at Block.io. Each key can be signed separately -- perfect for escrow, a variety of security
+# at Block.io. Each key can be used separately -- perfect for escrow, a variety of security
 # architectures, and ofcourse, for personal use + cold storage of savings.
 #
 # Any questions? Contact support@block.io.
@@ -45,10 +45,6 @@ print("* Creating a new 4 of 5 MultiSig address for DOGETEST")
 print(','.join(str(x) for x in pubkeys))
 response = block_io.get_new_dtrust_address(label=address_label,public_keys=','.join(str(x) for x in pubkeys),required_signatures=3) 
 
-# if you want this to be a green address (instant coin usage), add make_green=1 to the above call's parameters
-# if choosing a green address, you will not receive a redeem_script in the response
-# this is because Block.io must guarantee against double spends for green addresses
-
 # what's our new address?
 new_dtrust_address = response['data']['address']
 print(">> New dTrust Address on Network=", response['data']['network'], "is", new_dtrust_address)
@@ -73,9 +69,7 @@ response = block_io.submit_transaction(transaction_data=created_transaction_and_
       
 print(">> Transaction ID:", response['data']['txid']) # you can check this on SoChain or any other blockchain explorer immediately
 
-# since the above coins are coming from a Block.io green address (label=default, 2 of 2, visible on dashboard at Block.io),
-# they are spendable instantly
-# let's do that: spend coins from our dTrust address
+# spend coins from our dTrust address
 print("* Getting address balance for", new_dtrust_address)
 response = block_io.get_dtrust_address_balance(address=new_dtrust_address)
 available_balance = response['data']['available_balance']
