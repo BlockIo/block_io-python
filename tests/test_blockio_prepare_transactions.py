@@ -35,7 +35,7 @@ class TestBlockIoPrepareTransactions(unittest.TestCase):
         create_and_sign_transaction_response = self.load_json_file("data/json/create_and_sign_transaction_response_with_blockio_fee_and_expected_unsigned_txid.json")
         summarize_prepared_transaction_response = self.load_json_file("data/json/summarize_prepared_transaction_response_with_blockio_fee_and_expected_unsigned_txid.json")
 
-        summary = self.blockio.summarize_prepared_transaction_response(prepare_transaction_response)
+        summary = self.blockio.summarize_prepared_transaction(prepare_transaction_response)
 
         self.assertDictEqual(summarize_prepared_transaction_response, summary)
         
