@@ -27,7 +27,40 @@ class TestBlockIoPrepareTransactions(unittest.TestCase):
         json_file.close()
 
         return data
-    
+
+    def test_summarize_prepared_transaction(self):
+        # tests response of summarize_prepared_transaction
+
+        prepare_transaction_response = self.load_json_file("data/json/prepare_transaction_response_with_blockio_fee_and_expected_unsigned_txid.json")
+        create_and_sign_transaction_response = self.load_json_file("data/json/create_and_sign_transaction_response_with_blockio_fee_and_expected_unsigned_txid.json")
+        summarize_prepared_transaction_response = self.load_json_file("data/json/summarize_prepared_transaction_response_with_blockio_fee_and_expected_unsigned_txid.json")
+
+        summary = self.blockio.summarize_prepared_transaction_response(prepare_transaction_response)
+
+        self.assertDictEqual(summarize_prepared_transaction_response, summary)
+        
+        response = self.blockio.create_and_sign_transaction(prepare_transaction_response)
+
+        self.assertDictEqual(create_and_sign_transaction_response, response)
+
+    def test_expected_unsigned_txid(self):
+        # tests success and failure for expected_unsigned_txid
+
+        prepare_transaction_response = self.load_json_file("data/json/prepare_transaction_response_with_blockio_fee_and_expected_unsigned_txid.json")
+        create_and_sign_transaction_response = self.load_json_file("data/json/create_and_sign_transaction_response_with_blockio_fee_and_expected_unsigned_txid.json")
+
+        # success
+        response = self.blockio.create_and_sign_transaction(prepare_transaction_response)
+        self.assertDictEqual(create_and_sign_transaction_response, response)
+
+        # failure
+        prepare_transaction_response['data']['expected_unsigned_txid'] += 'x'
+        try:
+            response = self.blockio.create_and_sign_transaction(prepare_transaction_response)
+            self.assertEqual(True, False) # shouldn't happen
+        except Exception as e:
+            self.assertEqual(str(e), "Expected unsigned transaction ID mismatch. Please report this error to support@block.io.")
+
     def test_prepare_sweep_transaction_p2pkh(self):
         # P2PKH sweep
 
