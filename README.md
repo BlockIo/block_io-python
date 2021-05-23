@@ -10,7 +10,7 @@ This Python package is the official reference client for the Block.io payments A
 
 Install the package using `pip`:
 
-    pip install block-io
+    pip3 install block-io
 
 ## Usage
 
