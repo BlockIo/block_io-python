@@ -4,7 +4,7 @@ import hashlib
 import ecdsa
 import bitcoinutils.constants
 import bitcoinutils.bech32
-import base58check
+import base58
 
 bitcoinutils.constants.NETWORK_WIF_PREFIXES = { 'BTC': b'\x80',
                                                 'LTC': b'\xb0',
@@ -84,7 +84,7 @@ def get_output_script(address):
     if (decoded_bech32[0] is None or decoded_bech32[1] is None):
         # failed to decode information for bech32 address, so let's try decoding it as legacy addresses
         addr_encoded = address.encode('ascii')
-        decoded_hex = hexlify(base58check.b58decode( addr_encoded ))
+        decoded_hex = hexlify(base58.b58decode( addr_encoded ))
         network_prefix = decoded_hex[:2]
         address_hash160 = decoded_hex[2:len(decoded_hex)-8]
         decoded_checksum = decoded_hex[-8:]
