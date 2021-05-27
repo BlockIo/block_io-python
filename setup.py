@@ -20,5 +20,6 @@ setup(name='block-io',
           'base58==1.0.3',
           'bitcoin-utils @ git+https://github.com/doersf/python-bitcoin-utils.git@minimal'
       ],
-      zip_safe=False)
+      zip_safe=False,
+      options={"bdist_wheel": {"universal": True}})
 
