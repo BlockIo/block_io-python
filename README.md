@@ -8,7 +8,7 @@ This Python package is the official reference client for the Block.io payments A
 
 [Using virtualenv is recommended when installing Python packages](https://packaging.python.org/en/latest/installing.html#virtual-environments).
 
-Install the package using `pip`:
+Install the package using `pip3`:
 
     pip3 install block-io
 
