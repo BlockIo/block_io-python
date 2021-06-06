@@ -162,10 +162,11 @@ class BlockIo(object):
                 y_int = 256 * y_int + c
             return bytes((2+(y_int % 2),)) + x
 
-    def __init__(self, api_key, pin, version = 2):
+    def __init__(self, api_key, pin, proxy_config = {}, version = 2):
         # initiate the object
         self.api_key = api_key
         self.pin = pin
+        self.proxy_config = proxy_config
         self.version = version
         self.clientVersion = VERSION
         self.encryption_key = None
@@ -471,7 +472,7 @@ class BlockIo(object):
 
         # update the parameters with the API key
         session = requests.session()
-        response = session.post(self.base_url.replace('API_CALL',method), json = payload, headers = self.request_headers)
+        response = session.post(self.base_url.replace('API_CALL',method), json = payload, proxies = self.proxy_config, headers = self.request_headers)
         status_code = response.status_code
         
         try:
