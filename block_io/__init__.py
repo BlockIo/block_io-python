@@ -104,11 +104,41 @@ class BlockIo(object):
         @staticmethod
         def pinToAesKey(pin, salt = "", iterations = 2048, hashfn = sha256, phase1_key_length = 16, phase2_key_length = 32):
             # use pbkdf2 magic
-            # ( password, keylen, salt = "", itercount = 1024, hashfn = sha256 )
             ret = pbkdf2.pbkdf2(pin, phase1_key_length, salt, int(iterations/2), hashfn)
             ret = pbkdf2.pbkdf2(hexlify(ret), phase2_key_length, salt, int(iterations/2), hashfn)
             return hexlify(ret) # the encryption key
 
+        @staticmethod
+        def dynamicExtractKey(user_key, pin):
+            # uses the algorithm specified in the user_key object
+            # if no algorithm specified, uses the following default (legacy)
+            
+            algorithm = {
+                "pbkdf2_salt": "",
+                "pbkdf2_iterations": 2048,
+                "pbkdf2_hash_function": "SHA256",
+                "pbkdf2_phase1_key_length": 16,
+                "pbkdf2_phase2_key_length": 32,
+                "aes_iv": None,
+                "aes_cipher": "AES-256-ECB",
+                "aes_auth_tag": None,
+                "aes_auth_data": None
+            }
+
+            if 'algorithm' in user_key:
+                algorithm = user_key['algorithm']
+
+            if algorithm['pbkdf2_hash_function'] != "SHA256":
+                raise Exception("Unknown hash function specified. Are you using current version of this library?")
+            
+            aes_key = BlockIo.Helper.pinToAesKey(pin, algorithm['pbkdf2_salt'], algorithm['pbkdf2_iterations'],
+                                  sha256, algorithm['pbkdf2_phase1_key_length'], algorithm['pbkdf2_phase2_key_length'])
+
+            decrypted = BlockIo.Helper.decrypt(user_key['encrypted_passphrase'], aes_key,
+                                               algorithm['aes_iv'], algorithm['aes_cipher'], algorithm['aes_auth_tag'])
+
+            return BlockIo.Key.from_passphrase(unhexlify(decrypted))
+        
         @staticmethod
         def extractKey(encrypted_data, enc_key_hex):
             # encryption key is in hex
@@ -304,15 +334,13 @@ class BlockIo(object):
             cur_key = PrivateKey(secret_exponent=int(cur_key_hex,16))
             self.private_keys[cur_key.get_public_key().to_hex(compressed=True)] = cur_key
 
-        if self.encryption_key is None and self.pin is None and 'user_key' in prepare_data['data']:
+        if self.pin is None and 'user_key' in prepare_data['data'] and prepare_data['data']['user_key']['public_key'] not in self.private_keys:
             raise BlockIoUnknownError("No PIN provided to decrypt signer private key.")
         
-        if self.encryption_key is None and 'user_key' in prepare_data['data']:
-            self.encryption_key = self.Helper.pinToAesKey(self.pin)
-
         # decrypt the signer private key if we can
-        if self.encryption_key is not None and 'user_key' in prepare_data['data']:
-            key = self.Helper.extractKey(prepare_data['data']['user_key']['encrypted_passphrase'], self.encryption_key)
+        if self.pin is not None and 'user_key' in prepare_data['data'] and prepare_data['data']['user_key']['public_key'] not in self.private_keys:
+
+            key = self.Helper.dynamicExtractKey(prepare_data['data']['user_key'], self.pin)
 
             if (key.pubkey_hex().decode('utf-8') != prepare_data['data']['user_key']['public_key']):
                 raise Exception("Expected pubkey=",prepare_data['data']['user_key']['public_key'],"but got pubkey=",key.pubkey_hex(),". Invalid PIN provided.")

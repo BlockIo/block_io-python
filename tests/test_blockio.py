@@ -3,6 +3,7 @@ from block_io import BlockIo, BlockIoAPIError
 import os
 import unittest
 import time
+import json
 
 from struct import pack
 from types import *
@@ -82,6 +83,28 @@ class TestHelpers(unittest.TestCase):
         cleartext = BlockIo.Helper.decrypt(result['aes_cipher_text'], key, result['aes_iv'], result['aes_cipher'], result['aes_auth_tag'])
         self.assertEqual(cleartext, clear.encode('utf-8'))
 
+    def test_dynamic_extract_key_aes256ecb(self):
+        
+        user_key = json.loads('{"encrypted_passphrase":"3wIJtPoC8KO6S7x6LtrN0g==","public_key":"02f87f787bffb30396984cb6b3a9d6830f32d5b656b3e39b0abe4f3b3c35d99323","algorithm":{"pbkdf2_salt":"","pbkdf2_iterations":2048,"pbkdf2_hash_function":"SHA256","pbkdf2_phase1_key_length":16,"pbkdf2_phase2_key_length":32,"aes_iv":null,"aes_cipher":"AES-256-ECB","aes_auth_tag":null,"aes_auth_data":null}}')
+
+        key = BlockIo.Helper.dynamicExtractKey(user_key, "deadbeef")
+        self.assertEqual(key.pubkey_hex(), BlockIo.Key.from_passphrase(unhexlify("beadbeef")).pubkey_hex())
+        
+    def test_dynamic_extract_key_aes256cbc(self):
+
+        user_key = json.loads('{"encrypted_passphrase":"LExu1rUAtIBOekslc328Lw==","public_key":"02f87f787bffb30396984cb6b3a9d6830f32d5b656b3e39b0abe4f3b3c35d99323","algorithm":{"pbkdf2_salt":"922445847c173e90667a19d90729e1fb","pbkdf2_iterations":500000,"pbkdf2_hash_function":"SHA256","pbkdf2_phase1_key_length":16,"pbkdf2_phase2_key_length":32,"aes_iv":"11bc22166c8cf8560e5fa7e5c622bb0f","aes_cipher":"AES-256-CBC","aes_auth_tag":null,"aes_auth_data":null}}')
+
+        key = BlockIo.Helper.dynamicExtractKey(user_key, "deadbeef")
+        self.assertEqual(key.pubkey_hex(), BlockIo.Key.from_passphrase(unhexlify("beadbeef")).pubkey_hex())
+        
+    def test_dynamic_extract_key_aes256gcm(self):
+        
+        user_key = json.loads('{"encrypted_passphrase":"ELV56Z57KoA=","public_key":"02f87f787bffb30396984cb6b3a9d6830f32d5b656b3e39b0abe4f3b3c35d99323","algorithm":{"pbkdf2_salt":"922445847c173e90667a19d90729e1fb","pbkdf2_iterations":500000,"pbkdf2_hash_function":"SHA256","pbkdf2_phase1_key_length":16,"pbkdf2_phase2_key_length":32,"aes_iv":"a57414b88b67f977829cbdca","aes_cipher":"AES-256-GCM","aes_auth_tag":"adeb7dfe53027bdda5824dc524d5e55a","aes_auth_data":""}}')
+
+        key = BlockIo.Helper.dynamicExtractKey(user_key, "deadbeef")
+        self.assertEqual(key.pubkey_hex(), BlockIo.Key.from_passphrase(unhexlify("beadbeef")).pubkey_hex())
+        
+    
 class TestKeys(unittest.TestCase):
     def setUp(self):
         self.priv = "6b0e34587dece0ef042c4c7205ce6b3d4a64d0bc484735b9325f7971a0ead963"
