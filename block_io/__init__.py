@@ -102,10 +102,11 @@ class BlockIo(object):
     class Helper:
 
         @staticmethod
-        def pinToAesKey(pin):
+        def pinToAesKey(pin, salt = "", iterations = 2048, hashfn = sha256, phase1_key_length = 16, phase2_key_length = 32):
             # use pbkdf2 magic
-            ret = pbkdf2.pbkdf2(pin, 16)
-            ret = pbkdf2.pbkdf2(hexlify(ret), 32)
+            # ( password, keylen, salt = "", itercount = 1024, hashfn = sha256 )
+            ret = pbkdf2.pbkdf2(pin, phase1_key_length, salt, int(iterations/2), hashfn)
+            ret = pbkdf2.pbkdf2(hexlify(ret), phase2_key_length, salt, int(iterations/2), hashfn)
             return hexlify(ret) # the encryption key
 
         @staticmethod
@@ -115,7 +116,7 @@ class BlockIo(object):
             return BlockIo.Key.from_passphrase(unhexlify(decrypted))
 
         @staticmethod
-        def encrypt(data, key):
+        def encrypt(data, key, iv = None, cipher_type = "AES-256-ECB", auth_data = None):
             # key in hex, data as string
             # returns ciphertext in base64
 
@@ -125,28 +126,69 @@ class BlockIo(object):
             pad = lambda s: s + (BS - len(s) % BS) * chr(BS - len(s) % BS)
             unpad = lambda s : s[0:-s[-1]]
 
-            obj = AES.new(key, AES.MODE_ECB)
-            ciphertext = obj.encrypt(pad(data).encode('latin-1'))
+            obj = None
 
-            return base64.b64encode(ciphertext)
+            if cipher_type == "AES-256-ECB":
+                obj = AES.new(key, AES.MODE_ECB)
+            elif cipher_type == "AES-256-CBC":
+                obj = AES.new(key, AES.MODE_CBC, unhexlify(iv))
+            elif cipher_type == "AES-256-GCM":
+                obj = AES.new(key, AES.MODE_GCM, unhexlify(iv))
+            else:
+                raise Exception("Unsupported cipher", cipher_type)
+
+            response = {"aes_iv": iv, "aes_cipher_text": None, "aes_auth_tag": None, "aes_auth_data": None, "aes_cipher": cipher_type}
+
+            if cipher_type != "AES-256-GCM":
+                response["aes_cipher_text"] = base64.b64encode(obj.encrypt(pad(data).encode('latin-1')))
+            else:
+                # AES-256-GCM
+                # no padding for data
+                ciphertext = obj.encrypt(data.encode('latin-1'))
+                response["aes_cipher_text"] = base64.b64encode(ciphertext)
+                response["aes_auth_tag"] = hexlify(obj.digest())
+                
+            return response
 
         @staticmethod
-        def decrypt(b64data, key):
+        def decrypt(b64data, key, iv = None, cipher_type = "AES-256-ECB", auth_tag = None):
             # key in hex, b64data as base64 string
             # returns utf-8 string
 
             message = None
 
             try:
-                key = unhexlify(key) # get bytes
 
+                key = unhexlify(key) # get bytes
+                
                 BS = 16
                 pad = lambda s: s + (BS - len(s) % BS) * chr(BS - len(s) % BS)
                 unpad = lambda s : s[0:-s[-1]]
-
+                
                 data = base64.b64decode(b64data) # decode from base64
-                obj = AES.new(key, AES.MODE_ECB)
-                message = unpad(obj.decrypt(data))
+                
+                obj = None
+                
+                if cipher_type == "AES-256-ECB":
+                    obj = AES.new(key, AES.MODE_ECB)
+                elif cipher_type == "AES-256-CBC":
+                    obj = AES.new(key, AES.MODE_CBC, unhexlify(iv))
+                elif cipher_type == "AES-256-GCM":
+                    obj = AES.new(key, AES.MODE_GCM, unhexlify(iv))
+                else:
+                    raise Exception("Unsupported cipher", cipher_type)
+            
+                message = None
+
+                if cipher_type != "AES-256-GCM":
+                    message = unpad(obj.decrypt(data))
+                else:
+                    # AES-256-GCM
+                    # Auth tag must be exactly 16 bytes
+                    if (len(auth_tag) != 32):
+                        raise Exception("Auth tag must be 16 bytes exactly.")
+                    message = obj.decrypt_and_verify(data, unhexlify(auth_tag))
+                
             except:
                 # error decrypting? must be an invalid secret pin
                 raise Exception('Invalid Secret PIN provided.')
