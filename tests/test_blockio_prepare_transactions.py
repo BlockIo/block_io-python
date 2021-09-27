@@ -161,3 +161,13 @@ class TestBlockIoPrepareTransactions(unittest.TestCase):
 
         self.assertDictEqual(create_and_sign_transaction_response, response)
 
+    def test_prepare_transaction_witness_v1_output(self):
+        # WITNESS_V1 output
+
+        prepare_transaction_response = self.load_json_file("data/json/prepare_transaction_response_witness_v1_output.json")
+        create_and_sign_transaction_response = self.load_json_file("data/json/create_and_sign_transaction_response_witness_v1_output.json")
+
+        response = self.blockio.create_and_sign_transaction(prepare_transaction_response)
+
+        self.assertDictEqual(create_and_sign_transaction_response, response)
+

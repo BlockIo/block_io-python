@@ -101,9 +101,9 @@ def get_output_script(address):
             output_script = Script(['OP_DUP', 'OP_HASH160', address_hash160, 'OP_EQUALVERIFY', 'OP_CHECKSIG'])
         else:
             raise Exception("Invalid address provided")
-    elif decoded_bech32[0] == 0:
-        # only support witness v0 addresses for now
-        # it's a bech32 address
+    elif (decoded_bech32[0] == 0 or decoded_bech32[0] == 1):
+        # only support witness v0 and witness v1 addresses for now
+        # it's a bech32/bech32m address
         output_script = Script(["OP_" + str(decoded_bech32[0]), hexlify(bytearray(decoded_bech32[1]))])
     else:
         raise Exception("Unsupported address provided")
