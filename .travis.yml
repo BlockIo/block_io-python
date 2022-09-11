@@ -1,11 +1,11 @@
 language: python
-os: linux
+dist: focal
 python:
   - 3.6
   - 3.7
   - 3.8
   - 3.9
-  - "3.10-dev"
+  - 3.10
 
 install:
   - pip3 install .

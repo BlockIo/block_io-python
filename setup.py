@@ -4,7 +4,7 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
     
 setup(name='block-io',
-      version='2.0.5',
+      version='2.0.6',
       description='The easiest way to integrate Bitcoin, Dogecoin and Litecoin in your applications. Sign up at Block.io for your API key.',
       url='https://github.com/BlockIo/block_io-python',
       author='Atif Nazir',
@@ -15,9 +15,9 @@ setup(name='block-io',
       long_description=long_description,
       long_description_content_type="text/markdown",
       install_requires=[
-          'requests>=2.25.0',
+          'requests>=2.25.0,<3.0',
           'pycryptodome>=3.9.9,<4.0',
-          'base58==2.1.0',
-          'bitcoin-utils-fork-minimal==0.4.11.4'
+          'base58>=2.1,<2.2',
+          'bitcoin-utils-fork-minimal==0.4.11.6'
       ],
       zip_safe=False)
